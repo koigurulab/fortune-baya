@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>占いばあや｜鑑定</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="chat-head">
+      <a href="/" class="link">← 戻る</a>
+      <div class="title">占いばあやの鑑定</div>
+    </header>
+
+    <section id="chat" class="chat"></section>
+
+    <form id="form" class="composer">
+      <input id="input" class="input" placeholder="ここに入力…" autocomplete="off" />
+      <button class="btn" type="submit">送信</button>
+    </form>
+
+    <div class="actions">
+      <button id="reset" class="btn secondary">最初から</button>
+    </div>
+  </main>
+
+  <script src="/fortune.js"></script>
+</body>
+</html>
