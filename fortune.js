@@ -166,8 +166,10 @@ async function generate(mode, intake){
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ mode, intake })
   });
-  if(!res.ok) throw new Error("api error");
-  return await res.json();
+ if (!res.ok) {
+  const errText = await res.text();
+  console.error("fortune-generate error:", errText);
+  throw new Error(errText);
 }
 
 // UI helpers
