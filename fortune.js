@@ -25,7 +25,7 @@ function newIntake(){
       name: "占いばあや",
       tone: "polite_kyoto",
       forecast_style: "tendency_and_recommendation",
-      free_report_length_chars: 800,
+      free_report_length_chars: 1500,
       must_output: ["吉","凶","一手"]
     },
     user: { birthday:null, birth_time:null, birth_prefecture:null, mbti:null },
