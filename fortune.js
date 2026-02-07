@@ -162,14 +162,20 @@ async function advance(){
 
 async function generate(mode, intake){
   const res = await fetch("/api/fortune-generate", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode, intake })
   });
- if (!res.ok) {
-  const errText = await res.text();
-  console.error("fortune-generate error:", errText);
-  throw new Error(errText);
+
+  // 失敗時：本文をそのまま吐いて原因特定しやすくする
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("fortune-generate error:", errText);
+    throw new Error(errText);
+  }
+
+  // 成功時：JSONで返ってくる（mini_user/mini_partner: {text}, free_report: {html}）
+  return await res.json();
 }
 
 // UI helpers
