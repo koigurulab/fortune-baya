@@ -4,8 +4,133 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>占いばあや｜鑑定</title>
-  <link rel="stylesheet" href="/style.css">
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #7c3aed;
+      --accent-weak: #ede9fe;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Yu Gothic", "YuGothic",
+        system-ui, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+
+    .link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .link:hover { text-decoration: underline; }
+
+    .title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .chat {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 14px;
+      overflow: auto;
+      min-height: 55vh;
+    }
+
+    /* ここが改行対策の本丸 */
+    .msg {
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin: 10px 0;
+      line-height: 1.6;
+      white-space: pre-wrap;   /* 改行を保持 */
+      word-break: break-word;  /* 長文折り返し */
+    }
+
+    .msg.bot {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .msg.user {
+      background: var(--accent-weak);
+      border: 1px solid #ddd6fe;
+      margin-left: auto;
+    }
+
+    .composer {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+
+    .input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn:hover { opacity: 0.95; }
+
+    .btn.secondary {
+      background: white;
+      color: var(--ink);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  </style>
 </head>
+
 <body>
   <main class="wrap">
     <header class="chat-head">
