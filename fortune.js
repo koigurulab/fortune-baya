@@ -156,6 +156,11 @@ async function advance(){
     const out = await generate("free_report", intake);
     pushBotHtml(out.html);
     state=STATES.DONE;
+
+    // ここを追加
+  showPaidActions();
+  bindPaidActions(() => intake);
+
     pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
   }
 }
@@ -176,6 +181,65 @@ async function generate(mode, intake){
 
   // 成功時：JSONで返ってくる（mini_user/mini_partner: {text}, free_report: {html}）
   return await res.json();
+}
+
+const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+
+function showPaidActions() {
+  const box = document.getElementById("paidActions");
+  const note = document.getElementById("paidActionsNote");
+  if (!box) return;
+
+  box.classList.remove("is-hidden");
+  if (DEV_PAID) note.classList.remove("is-hidden");
+
+  // 本番想定ではここで文言/遷移先を差し替える（後述）
+}
+
+function setPaidButtonsEnabled(enabled) {
+  const b300 = document.getElementById("btnPaid300");
+  const b980 = document.getElementById("btnPaid980");
+  if (b300) b300.disabled = !enabled;
+  if (b980) b980.disabled = !enabled;
+}
+
+function bindPaidActions(intakeRefGetter) {
+  const b300 = document.getElementById("btnPaid300");
+  const b980 = document.getElementById("btnPaid980");
+
+  if (b300) {
+    b300.onclick = async () => {
+      try {
+        setPaidButtonsEnabled(false);
+        pushBot("承知しました。300円版の鑑定をお出しします…");
+        const intake = intakeRefGetter();
+        const out = await generate("paid_300", intake);
+        pushBot(out.text || out.html || "");
+      } catch (e) {
+        pushBot("申し訳ございません。300円版の生成に失敗しました。");
+        console.error(e);
+      } finally {
+        setPaidButtonsEnabled(true);
+      }
+    };
+  }
+
+  if (b980) {
+    b980.onclick = async () => {
+      try {
+        setPaidButtonsEnabled(false);
+        pushBot("承知しました。980円版の鑑定をお出しします…");
+        const intake = intakeRefGetter();
+        const out = await generate("paid_980", intake);
+        pushBot(out.text || out.html || "");
+      } catch (e) {
+        pushBot("申し訳ございません。980円版の生成に失敗しました。");
+        console.error(e);
+      } finally {
+        setPaidButtonsEnabled(true);
+      }
+    };
+  }
 }
 
 // UI helpers
