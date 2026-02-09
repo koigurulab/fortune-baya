@@ -15,7 +15,6 @@
       --accent: #7c3aed;
       --accent-weak: #ede9fe;
     }
-
     * { box-sizing: border-box; }
 
     body {
@@ -68,6 +67,7 @@
       min-height: 55vh;
     }
 
+    /* message bubble */
     .msg {
       padding: 10px 12px;
       border-radius: 12px;
@@ -76,19 +76,17 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-
     .msg.bot {
       background: #f8fafc;
       border: 1px solid var(--line);
     }
-
     .msg.user {
       background: var(--accent-weak);
       border: 1px solid #ddd6fe;
       margin-left: auto;
     }
 
-    /* choices */
+    /* quick replies */
     .choices {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -96,38 +94,61 @@
       padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
+    .choices.is-hidden { display: none !important; }
 
     .choices__hint {
       color: var(--muted);
       font-size: 13px;
     }
 
-    .choices__row {
+    .choice-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
+      gap: 10px;
     }
 
     .chip {
       appearance: none;
-      border: 1px solid #e5e7eb;
-      background: #ffffff;
+      border: 1px solid var(--line);
+      background: #fff;
       color: var(--ink);
-      padding: 10px 14px;
       border-radius: 999px;
-      font-size: 14px;
+      padding: 10px 14px;
+      font-weight: 700;
       cursor: pointer;
+      min-width: 90px;
+      text-align: center;
     }
-    .chip:hover { background: #fafafa; }
-    .chip:disabled { opacity: 0.6; cursor: not-allowed; }
-
     .chip.primary {
       border-color: #ddd6fe;
       background: var(--accent-weak);
     }
+    .chip:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .picker {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .picker input {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 15px;
+    }
+    .picker .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .picker .btn:hover { opacity: 0.95; }
 
     .composer {
       display: flex;
@@ -147,7 +168,7 @@
       outline: none;
     }
 
-    .btn {
+    .btn-send {
       padding: 10px 14px;
       border-radius: 10px;
       border: 1px solid var(--line);
@@ -156,17 +177,24 @@
       font-weight: 700;
       cursor: pointer;
     }
-    .btn:hover { opacity: 0.95; }
-    .btn.secondary { background: white; color: var(--ink); }
+    .btn-send:hover { opacity: 0.95; }
+
+    .btn-secondary {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      font-weight: 700;
+      cursor: pointer;
+    }
 
     .actions {
       display: flex;
       justify-content: flex-end;
     }
 
-    /* paid actions */
-    .is-hidden { display: none !important; }
-
+    /* Paid actions */
     .paid-actions {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -176,18 +204,26 @@
       flex-direction: column;
       gap: 10px;
     }
+    .paid-actions.is-hidden { display: none !important; }
+
     .paid-actions__title {
-      font-weight: 700;
+      font-weight: 800;
       font-size: 14px;
     }
+    .paid-actions__row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .paid-actions__btn {
-      width: 100%;
-      padding: 12px 14px;
+      flex: 1;
+      min-width: 160px;
+      padding: 10px 14px;
       border-radius: 10px;
       border: 1px solid var(--line);
-      background: white;
+      background: #fff;
       color: var(--ink);
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
     }
     .paid-actions__btn--primary {
@@ -211,44 +247,29 @@
 
     <section id="chat" class="chat"></section>
 
-    <!-- choices -->
+    <!-- choices (quick replies) -->
     <section id="choices" class="choices is-hidden">
       <div class="choices__hint">選択肢を押すか、下の自由入力でも回答できます。</div>
-      <div id="choicesRow" class="choices__row"></div>
+      <div id="choicesBody"></div>
+    </section>
+
+    <!-- paid actions (hidden by default) -->
+    <section id="paidActions" class="paid-actions is-hidden">
+      <div class="paid-actions__title">有料レポート</div>
+      <div class="paid-actions__row">
+        <button id="btnPaid480" class="paid-actions__btn paid-actions__btn--primary">480円版を出す（テスト）</button>
+        <button id="btnPaid980" class="paid-actions__btn">980円版を出す（テスト）</button>
+      </div>
+      <div id="paidActionsNote" class="paid-actions__note is-hidden">※テスト中：決済なしで生成しています</div>
     </section>
 
     <form id="form" class="composer">
       <input id="input" class="input" placeholder="ここに入力…" autocomplete="off" />
-      <button class="btn" type="submit">送信</button>
+      <button class="btn-send" type="submit">送信</button>
     </form>
 
-    <!-- Paid actions (hidden by default) -->
-    <div id="paidActions" class="paid-actions is-hidden">
-      <div class="paid-actions__title">有料レポート</div>
-
-      <button id="btnPaid480" class="paid-actions__btn paid-actions__btn--primary">
-        480円版を購入する（準備中）
-      </button>
-
-      <button id="btnPaid980" class="paid-actions__btn">
-        980円版を購入する（準備中）
-      </button>
-
-      <button id="btnDevPaid480" class="paid-actions__btn is-hidden">
-        480円版を出す（テスト）
-      </button>
-
-      <button id="btnDevPaid980" class="paid-actions__btn is-hidden">
-        980円版を出す（テスト）
-      </button>
-
-      <div id="paidActionsNote" class="paid-actions__note is-hidden">
-        ※テスト中：決済なしで生成しています
-      </div>
-    </div>
-
     <div class="actions">
-      <button id="reset" class="btn secondary">最初から</button>
+      <button id="reset" class="btn-secondary">最初から</button>
     </div>
   </main>
 
