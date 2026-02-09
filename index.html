@@ -1,22 +1,846 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>占いばあや｜恋の四柱推命</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8" />
+  <title>占いばあやの鑑定｜相性と今の一手を、静かに言語化</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#0a0f1c;
+      --card:#0f172a;
+      --card2:#111c33;
+      --ink:#e5e7eb;
+      --muted:#9ca3af;
+      --line:rgba(148,163,184,.18);
+
+      --accent:#7c3aed;       /* 紫（上品） */
+      --accent2:#a78bfa;      /* 薄紫 */
+      --accent-dark:#6d28d9;
+
+      --good:#34d399;
+      --warn:#fbbf24;
+
+      --shadow: 0 18px 46px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      color:var(--ink);
+      background:
+        radial-gradient(1000px 500px at 15% 10%, rgba(124,58,237,.35), transparent 55%),
+        radial-gradient(900px 500px at 85% 20%, rgba(167,139,250,.25), transparent 60%),
+        radial-gradient(1200px 700px at 50% 80%, rgba(14,165,233,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      font-family:
+        -apple-system, BlinkMacSystemFont,
+        "Segoe UI","Helvetica Neue",
+        "Yu Gothic UI","Yu Gothic","Meiryo",
+        sans-serif;
+      font-size:14px;
+      line-height:1.75;
+    }
+
+    a{ color:inherit; }
+    h1,h2,h3{ margin:0; font-weight:800; letter-spacing:.02em; }
+    p{ margin:0; }
+
+    /* ===== header ===== */
+    header{
+      position: sticky;
+      top:0;
+      z-index:50;
+      background: rgba(10,15,28,.72);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(148,163,184,.14);
+    }
+    .header-inner{
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .logo{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .logo-mark{
+      width:34px; height:34px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(167,139,250,.95));
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 10px 22px rgba(124,58,237,.25);
+      flex:0 0 auto;
+      font-weight:900;
+    }
+    .logo-text-wrap{ min-width:0; }
+    .logo-text-main{
+      font-size:15px;
+      white-space:nowrap;
+      line-height:1.1;
+    }
+    .logo-text-sub{
+      margin-left:8px;
+      font-size:11px;
+      color:rgba(229,231,235,.78);
+      border: 1px solid rgba(167,139,250,.35);
+      background: rgba(124,58,237,.10);
+      padding:2px 8px;
+      border-radius:999px;
+      white-space:nowrap;
+      display:inline-flex;
+      align-items:center;
+    }
+    @media(max-width:420px){
+      .logo-text-sub{ display:none; }
+    }
+
+    .header-cta{
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      text-decoration:none;
+      box-shadow: 0 10px 24px rgba(124,58,237,.35);
+      white-space: nowrap;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+      flex:0 0 auto;
+    }
+    .header-cta:hover{ filter: brightness(1.05); }
+
+    /* ===== layout ===== */
+    .wrap{
+      max-width:1040px;
+      margin:0 auto;
+      padding: 26px 16px 64px;
+    }
+
+    /* ===== hero ===== */
+    .hero{
+      display:grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+      gap: 28px;
+      align-items: center;
+      padding-top: 10px;
+    }
+    @media(max-width:860px){
+      .hero{ grid-template-columns: minmax(0,1fr); }
+    }
+
+    .hero-title{
+      font-size: 28px;
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+    .hero-tagline{
+      font-size: 28px;
+      line-height: 1.35;
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(120deg, #e9d5ff, #a78bfa, #60a5fa);
+      -webkit-background-clip:text;
+      color: transparent;
+    }
+
+    .hero-sub{
+      color: rgba(229,231,235,.78);
+      margin-bottom: 16px;
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    /* ===== baya row ===== */
+    .bayaRow{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      margin: 10px 0 14px;
+    }
+    .bayaImg{
+      width: 96px;
+      height:auto;
+      flex: 0 0 auto;
+      filter: drop-shadow(0 14px 28px rgba(0,0,0,.35));
+      border-radius: 18px;
+    }
+    .bubble{
+      position: relative;
+      padding: 12px 14px;
+      border-radius: 14px;
+      line-height: 1.6;
+      background: rgba(17,24,39,.65);
+      border: 1px solid rgba(167,139,250,.30);
+      box-shadow: var(--shadow);
+      color: rgba(229,231,235,.92);
+      font-weight: 700;
+    }
+    .bubble:before{
+      content:"";
+      position:absolute;
+      left:-10px;
+      top:18px;
+      border-width:10px 10px 10px 0;
+      border-style:solid;
+      border-color:transparent rgba(167,139,250,.30) transparent transparent;
+    }
+    .bubble:after{
+      content:"";
+      position:absolute;
+      left:-9px;
+      top:18px;
+      border-width:10px 10px 10px 0;
+      border-style:solid;
+      border-color:transparent rgba(17,24,39,.65) transparent transparent;
+    }
+
+    .hero-cta-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 10px;
+      align-items:center;
+      margin-bottom: 8px;
+    }
+    .hero-cta-main{
+      padding: 12px 22px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#fff;
+      font-size: 14px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 14px 30px rgba(124,58,237,.42);
+    }
+    .hero-cta-main:hover{ filter: brightness(1.05); }
+
+    .hero-cta-sub{
+      font-size: 12px;
+      color: rgba(229,231,235,.75);
+    }
+    .hero-cta-link{
+      color: #c4b5fd;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor:pointer;
+      font-weight: 800;
+    }
+    .hero-note{
+      margin-top: 10px;
+      font-size: 11px;
+      color: rgba(229,231,235,.60);
+    }
+
+    /* ===== right card ===== */
+    .hero-card{
+      position: relative;
+      background: rgba(15,23,42,.80);
+      border: 1px solid rgba(148,163,184,.16);
+      border-radius: 22px;
+      padding: 16px 14px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      max-width: 420px;
+      margin-left:auto;
+    }
+    @media(max-width:860px){
+      .hero-card{ margin: 8px auto 0; }
+    }
+    .hero-card:before{
+      content:"";
+      position:absolute;
+      inset:-80px -120px auto auto;
+      width:260px; height:260px;
+      background: radial-gradient(circle, rgba(124,58,237,.35), transparent 70%);
+      transform: rotate(15deg);
+      pointer-events:none;
+    }
+
+    .mini-labels{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom: 12px;
+    }
+    .pill{
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(229,231,235,.88);
+      border: 1px solid rgba(167,139,250,.26);
+      background: rgba(124,58,237,.12);
+      padding: 5px 10px;
+      border-radius: 999px;
+    }
+    .pill.good{ border-color: rgba(52,211,153,.30); background: rgba(52,211,153,.10); }
+    .pill.warn{ border-color: rgba(251,191,36,.30); background: rgba(251,191,36,.10); }
+
+    .mock{
+      background: rgba(2,6,23,.55);
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 18px;
+      padding: 10px 10px 8px;
+    }
+    .mock-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom: 8px;
+      color: rgba(229,231,235,.65);
+      font-size: 11px;
+    }
+    .mock-id{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    .mock-avatar{
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      overflow:hidden;
+      background: rgba(167,139,250,.20);
+      border:1px solid rgba(167,139,250,.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex: 0 0 auto;
+    }
+    .mock-avatar img{
+      width:100%; height:100%;
+      object-fit: cover;
+      display:block;
+    }
+    .mock-name{ font-weight:800; }
+
+    .mock-body{
+      background: rgba(15,23,42,.55);
+      border-radius: 16px;
+      padding: 8px;
+    }
+    .row{
+      display:flex;
+      margin: 6px 0;
+    }
+    .row.user{ justify-content:flex-end; }
+    .bub{
+      max-width: 78%;
+      padding: 8px 10px;
+      border-radius: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-line;
+    }
+    .row.assistant .bub{
+      background: rgba(229,231,235,.08);
+      border:1px solid rgba(148,163,184,.14);
+      border-bottom-left-radius: 6px;
+      color: rgba(229,231,235,.92);
+    }
+    .row.user .bub{
+      background: rgba(124,58,237,.92);
+      border:1px solid rgba(167,139,250,.25);
+      border-bottom-right-radius: 6px;
+      color: #fff;
+    }
+
+    .mock-footer{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      margin-top: 10px;
+    }
+    .mock-input{
+      flex:1;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(2,6,23,.35);
+      color: rgba(229,231,235,.65);
+      font-size: 12px;
+    }
+    .mock-btn{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border:none;
+      background: rgba(229,231,235,.12);
+      color: rgba(229,231,235,.92);
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    /* ===== sections ===== */
+    .section{
+      margin-top: 44px;
+      padding-top: 44px;
+      border-top: 1px solid rgba(148,163,184,.12);
+    }
+
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(167,139,250,.25);
+      background: rgba(124,58,237,.10);
+      color: rgba(229,231,235,.88);
+      font-size: 11px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .section-title{
+      font-size: 22px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .section-lead{
+      color: rgba(229,231,235,.75);
+      margin-bottom: 18px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+      gap: 18px;
+    }
+    @media(max-width:860px){
+      .grid2{ grid-template-columns: minmax(0,1fr); }
+    }
+
+    .card{
+      background: rgba(15,23,42,.72);
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: var(--radius);
+      padding: 14px 14px 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.20);
+    }
+    .card-title{
+      font-weight: 900;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .card-body{
+      color: rgba(229,231,235,.75);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+    .list{
+      padding-left: 18px;
+      margin: 10px 0 0;
+      color: rgba(229,231,235,.78);
+      font-size: 13px;
+    }
+    .list li{ margin: 6px 0; }
+
+    .strongBox{
+      margin-top: 14px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(167,139,250,.25);
+      background: rgba(124,58,237,.08);
+      color: rgba(229,231,235,.90);
+      font-weight: 800;
+    }
+
+    /* ===== pricing ===== */
+    .pricing{
+      display:grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+    @media(max-width:860px){
+      .pricing{ grid-template-columns: minmax(0,1fr); }
+    }
+    .priceCard{
+      background: rgba(15,23,42,.78);
+      border: 1px solid rgba(148,163,184,.16);
+      border-radius: 20px;
+      padding: 16px 14px 14px;
+      box-shadow: var(--shadow);
+    }
+    .priceTag{
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(229,231,235,.75);
+    }
+    .price{
+      margin-top: 6px;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      background: linear-gradient(120deg, #e9d5ff, #a78bfa);
+      -webkit-background-clip:text;
+      color: transparent;
+    }
+    .priceTitle{
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .priceDesc{
+      margin-top: 6px;
+      color: rgba(229,231,235,.75);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+    .priceBtn{
+      margin-top: 12px;
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(167,139,250,.30);
+      background: rgba(124,58,237,.18);
+      color:#fff;
+      font-weight: 900;
+      cursor:pointer;
+    }
+    .priceBtn:hover{ filter: brightness(1.05); }
+
+    /* ===== faq ===== */
+    details{
+      background: rgba(15,23,42,.68);
+      border:1px solid rgba(148,163,184,.14);
+      border-radius: 16px;
+      padding: 12px 12px;
+      margin: 10px 0;
+    }
+    summary{
+      cursor:pointer;
+      font-weight: 900;
+      color: rgba(229,231,235,.92);
+    }
+    details p{
+      margin-top: 8px;
+      color: rgba(229,231,235,.75);
+    }
+
+    /* ===== footer ===== */
+    footer{
+      margin-top: 42px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(148,163,184,.12);
+      color: rgba(229,231,235,.60);
+      font-size: 12px;
+    }
+    .footRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .footLinks a{
+      color: rgba(229,231,235,.75);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      margin-right: 10px;
+    }
+  </style>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PMRW6LK7YG"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', 'G-PMRW6LK7YG', { send_page_view: true });
+  </script>
+
+  <script>
+    function safeScrollTo(id){
+      try{
+        var el = document.getElementById(id);
+        if(!el) return;
+        if(typeof el.scrollIntoView === 'function'){
+          el.scrollIntoView({behavior:'smooth'});
+        }else{
+          window.location.hash = '#' + id;
+        }
+      }catch(e){}
+    }
+    function track(eventName, params){
+      try{
+        if(typeof window.gtag === 'function'){
+          window.gtag('event', eventName, params || {});
+        }
+      }catch(e){}
+    }
+  </script>
 </head>
+
 <body>
-  <main class="wrap">
-    <header class="hero">
-      <img src="/assets/fortune_grandma_transparent.png" alt="占いばあや" class="avatar">
-      <h1>占いばあや</h1>
-      <p>四柱推命 × 気質（MBTI）で、恋の流れをやさしく紐解きます。</p>
-      <a class="btn" href="/fortune.html">占いをはじめる</a>
-    </header>
-    <section class="note">
-      <p class="small">※エンタメとしてお楽しみください。未来は断言せず「傾向＋推奨」でお伝えします。</p>
-    </section>
-  </main>
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark">占</div>
+      <div class="logo-text-wrap">
+        <div class="logo-text-main">
+          占いばあやの鑑定
+          <span class="logo-text-sub">相性 × 今の一手</span>
+        </div>
+      </div>
+    </div>
+
+    <a class="header-cta" href="chat.html" onclick="track('click_start_free',{location:'header'});">
+      無料で鑑定する
+    </a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <!-- left -->
+    <div>
+      <h1 class="hero-title">生年月日と状況から、</h1>
+      <div class="hero-tagline">相性と「今の一手」を静かに整える。</div>
+
+      <div class="bayaRow">
+        <!-- 画像は assets/baya_320.webp を想定。無ければ public/baya.png にしてもOK -->
+        <img class="bayaImg" src="./assets/baya_320.webp" alt="占いばあや" onerror="this.style.display='none'">
+        <div class="bubble">
+          焦らなくて大丈夫でございます。<br>
+          事実と気持ちを分けて、いま一番効く一手だけお渡ししますね。
+        </div>
+      </div>
+
+      <p class="hero-sub">
+        占いが好きでも、「結局どうすればいいか」が残ること、ありますよね。<br>
+        占いばあやは、<b>相性</b>と<b>状況</b>をもとに、あなたの迷いをほどき、<b>今日から動ける一手</b>へ落とします。
+      </p>
+
+      <div class="hero-cta-row" id="start">
+        <button class="hero-cta-main"
+          onclick="track('click_start_free',{location:'hero'}); window.location.href='chat.html';">
+          無料で鑑定をはじめる
+        </button>
+        <span class="hero-cta-sub">
+          まずは <span class="hero-cta-link" onclick="safeScrollTo('about')">内容を見る</span>
+        </span>
+      </div>
+
+      <p class="hero-note">
+        ※ 入力内容は鑑定のために使用します。／医療・法律等の専門判断を代替するものではありません。
+      </p>
+    </div>
+
+    <!-- right -->
+    <div>
+      <div class="hero-card">
+        <div class="mini-labels">
+          <div class="pill good">無料：相性の核＋今日の一手</div>
+          <div class="pill warn">有料：深掘り＋時期＋行動設計</div>
+        </div>
+
+        <div class="mock">
+          <div class="mock-top">
+            <div class="mock-id">
+              <div class="mock-avatar">
+                <img src="./assets/baya_320.webp" alt="占いばあや" onerror="this.innerHTML='ば'">
+              </div>
+              <div>
+                <div class="mock-name">占いばあや</div>
+                <div style="font-size:10px;opacity:.8;">オンライン</div>
+              </div>
+            </div>
+            <div style="font-size:10px;opacity:.8;">相性鑑定</div>
+          </div>
+
+          <div class="mock-body">
+            <div class="row user">
+              <div class="bub">返信が遅くて不安です。<br>脈なしですか…？</div>
+            </div>
+            <div class="row assistant">
+              <div class="bub">
+                まず「不安」と「事実」を分けましょう。<br>
+                事実：返信が遅い。<br>
+                ここから取れる可能性を3つに絞り、あなたの一手に落としますね。
+              </div>
+            </div>
+            <div class="row assistant">
+              <div class="bub">
+                今日の一手：<br>
+                ①追撃はせず、質問は1つに絞る<br>
+                ②送るなら“軽い肯定＋短文”<br>
+                ③期限を決めて待つ（自分を守る）
+              </div>
+            </div>
+          </div>
+
+          <div class="mock-footer">
+            <div class="mock-input">例）相手の生年月日と関係性を入力</div>
+            <button class="mock-btn" onclick="window.location.href='chat.html'">開始</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section id="problem" class="section">
+    <div class="eyebrow">こんなお悩み、ありませんか？</div>
+    <h2 class="section-title">占いで当たっても、心が落ち着かない。</h2>
+    <p class="section-lead">
+      それはあなたが弱いからではなく、情報が「行動」に変換されていないだけです。<br>
+      ばあやは、納得感と現実的な一手をセットでお渡しします。
+    </p>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">よくある状態</div>
+        <div class="card-body">
+          <ul class="list">
+            <li>相性は良いと言われたのに、連絡が来ない</li>
+            <li>「待て」と言われても、何をどう待てばいいか分からない</li>
+            <li>不安な時に限って、余計な一言を送ってしまう</li>
+            <li>占い結果の解釈が増えて、逆に迷う</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ばあやがやること</div>
+        <div class="card-body">
+          <ul class="list">
+            <li>事実／解釈／感情を分けて「迷いの正体」を明確化</li>
+            <li>相性の“核”と、衝突しやすい論点を整理</li>
+            <li>今日〜今週の「一手」に落とす（やる／やらないも明示）</li>
+            <li>必要なら、有料で時期と行動設計まで深掘り</li>
+          </ul>
+        </div>
+
+        <div class="strongBox">
+          大事なのは「当たる」だけでなく、<br>
+          あなたが“崩れない”打ち手を持つことです。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about" class="section">
+    <div class="eyebrow">サービスの中身</div>
+    <h2 class="section-title">入力 → 整理 → 一手。ここまでを最短で。</h2>
+    <p class="section-lead">
+      チャット形式で、必要な情報だけ順番に伺います。<br>
+      生年月日（必須）＋ 任意項目（出生時刻など）で精度を上げられます。
+    </p>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">無料で受け取れるもの</div>
+        <div class="card-body">
+          <ul class="list">
+            <li>相性の核（噛み合う点／ズレる点）</li>
+            <li>状況の整理（事実／解釈／感情）</li>
+            <li>今日の一手（短く、具体）</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">有料で深掘りできるもの</div>
+        <div class="card-body">
+          <ul class="list">
+            <li>相手側の深掘り（反応が出る条件・地雷）</li>
+            <li>時期の波（今動く／待つの判断）</li>
+            <li>メッセージ案／会う時の空気づくり</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="section">
+    <div class="eyebrow">料金</div>
+    <h2 class="section-title">まずは無料。必要なら、深い鑑定へ。</h2>
+    <p class="section-lead">
+      無料で「核」と「一手」を確認してから、深掘りに進めます。
+    </p>
+
+    <div class="pricing">
+      <div class="priceCard">
+        <div class="priceTag">ライト深掘り</div>
+        <div class="price">¥480</div>
+        <div class="priceTitle">一手確定版</div>
+        <div class="priceDesc">
+          迷いが出やすい論点を絞って、<b>今週の打ち手</b>を確定します。<br>
+          「送るなら何を」「待つならどこまで」を明確に。
+        </div>
+        <button class="priceBtn" onclick="track('click_start_free',{location:'pricing_480'}); window.location.href='chat.html';">
+          無料鑑定からはじめる
+        </button>
+      </div>
+
+      <div class="priceCard">
+        <div class="priceTag">フル深掘り</div>
+        <div class="price">¥980</div>
+        <div class="priceTitle">行動設計版</div>
+        <div class="priceDesc">
+          相手の性質・時期の波・言い回しまで含めて、<b>勝ち筋の行動設計</b>を作ります。<br>
+          長期で崩れない“型”が欲しい方向け。
+        </div>
+        <button class="priceBtn" onclick="track('click_start_free',{location:'pricing_980'}); window.location.href='chat.html';">
+          無料鑑定からはじめる
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="section">
+    <div class="eyebrow">よくある質問</div>
+    <h2 class="section-title">不安は先に潰しておきましょう。</h2>
+
+    <details>
+      <summary>キャラクターだと信じにくくないですか？</summary>
+      <p>
+        入口を柔らかくするためにキャラクターで案内していますが、文章の中身は
+        「状況整理→相性→打ち手」の順で一貫して出します。<br>
+        “当たる・当たらない”よりも、あなたが崩れない一手を重視しています。
+      </p>
+    </details>
+
+    <details>
+      <summary>出生時刻や都道府県が分からなくても大丈夫？</summary>
+      <p>
+        はい。生年月日が必須で、それ以外は任意です。分からない項目は“不明”で進められます。
+      </p>
+    </details>
+
+    <details>
+      <summary>無料だけでも使えますか？</summary>
+      <p>
+        無料では「相性の核＋今日の一手」までお渡しします。深掘りが必要な場合だけ有料をご検討ください。
+      </p>
+    </details>
+  </section>
+
+  <footer>
+    <div class="footRow">
+      <div>© 占いばあや</div>
+      <div class="footLinks">
+        <a href="chat.html" onclick="track('click_start_free',{location:'footer'});">無料で鑑定する</a>
+        <a href="#" onclick="safeScrollTo('faq'); return false;">FAQ</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
 </body>
 </html>
