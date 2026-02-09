@@ -104,10 +104,10 @@ function ask(s){
 
 function questionFor(s){
   switch(s){
-    case STATES.ASK_USER_BDAY: return "まず、あなた様の生年月日を西暦でお教えくださいませ。（例：2003/01/07）";
+    case STATES.ASK_USER_BDAY: return "まず、あなた様の生年月日を西暦でお教えくださいませ。";
     case STATES.ASK_USER_GENDER: return "差し支えなければ、あなた様の性別をお伺いしてもよろしいですか。";
-    case STATES.ASK_USER_BTIME: return "出生時刻が分かればお教えくださいませ。不明でも大丈夫でございます。（例：05:15 / 不明）";
-    case STATES.ASK_USER_PREF: return "お生まれの都道府県をお伺いしてもよろしいですか。（自由入力で結構です）";
+    case STATES.ASK_USER_BTIME: return "出生時刻が分かればお教えくださいませ。不明であれば大体の時間帯でも大丈夫でございます。（例：昼頃ならば12:00）";
+    case STATES.ASK_USER_PREF: return "お生まれの都道府県をお伺いしてもよろしいですか。";
     case STATES.ASK_USER_MBTI: return "MBTIは何型でしょう？分からなければ“不明”で結構です。";
 
     case STATES.ASK_PARTNER_BDAY: return "次にお相手様です。生年月日（西暦）は分かりますか？分からなければ“不明”とご入力くださいませ。";
@@ -117,9 +117,9 @@ function questionFor(s){
     case STATES.ASK_PARTNER_BTIME: return "お相手様の出生時刻が分かればお教えくださいませ。不明で結構です。";
     case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ“不明”で結構です。";
 
-    case STATES.ASK_RELATION: return "いまの関係性を、ひとことで。（片想い／交際中／曖昧／復縁など、自由で結構です）";
-    case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くで。（例：3日前に既読のまま／先週会った など）";
-    case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを伺います。何に悩んでおられて、どうなりたいですか？長くて構いません。迷ったら、①直近の事実②不安③理想④期限 の順にお書きくださいませ。";
+    case STATES.ASK_RELATION: return "いまの関係性を、ひとことでお教えください。（片想い中／交際中／曖昧な関係／復縁したなど、自由で結構です）";
+    case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。。（例：3日前に既読のまま／先週会った など）";
+    case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを伺います。何に悩んでおられて、どうなりたいですか？長くて構いません。迷ったら、①直近の事実②不安③理想 の順にお書きくださいませ。";
     default: return null;
   }
 }
