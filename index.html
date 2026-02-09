@@ -3,38 +3,53 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>占いばあや｜相性、結論だけ。</title>
-  <meta name="description" content="相性、結論だけ。無料で3分。">
+  <title>占いばあや｜四柱推命で相性診断</title>
+  <meta name="description" content="生年月日と関係性を入れるだけで、相性と運勢を読み解き、あなた様がこの１週間どうするべきかを鑑定します。まずは無料で。">
   <style>
     :root{
-      --bg1:#060913;
-      --bg2:#0b1220;
-      --ink:#e5e7eb;
-      --muted:rgba(229,231,235,.68);
+      /* ====== 色（ゲーミング感を抑えた“夜×和”） ====== */
+      --bg1:#070a10;            /* 墨 */
+      --bg2:#0d1220;            /* 藍 */
+      --wash:#0b0f1a;           /* 下地 */
+      --ink:#e7e5e4;            /* 生成り寄り */
+      --muted:rgba(231,229,228,.72);
+      --muted2:rgba(231,229,228,.56);
       --line:rgba(255,255,255,.10);
       --panel:rgba(255,255,255,.06);
-      --accent:#7c3aed;
-      --accent2:#a78bfa;
-      --ok:#22c55e;
+      --panel2:rgba(255,255,255,.08);
+
+      /* アクセント：紫は残すが“落ち着いた藤色”へ */
+      --accent:#7c6ee6;
+      --accent2:#b7aef6;
+
+      /* chat colors */
+      --user:#d6d3d1;           /* ユーザーは淡い生成り */
+      --userInk:#0a0a0a;
+      --bot:#121826;            /* ボットの吹き出しは濃紺 */
+      --botLine:rgba(255,255,255,.10);
+
       --radius:18px;
-      --shadow: 0 18px 50px rgba(0,0,0,.45);
+      --shadow: 0 18px 52px rgba(0,0,0,.50);
     }
+
     *{ box-sizing:border-box; }
     body{
       margin:0;
       color:var(--ink);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
       background:
-        radial-gradient(900px 500px at 20% 0%, rgba(124,58,237,.45), transparent 60%),
-        radial-gradient(900px 700px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+        radial-gradient(1000px 520px at 20% 0%, rgba(124,110,230,.22), transparent 60%),
+        radial-gradient(1100px 620px at 90% 15%, rgba(183,174,246,.12), transparent 62%),
+        radial-gradient(900px 700px at 50% 110%, rgba(255,255,255,.05), transparent 60%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
       min-height:100vh;
     }
     .wrap{ max-width:560px; margin:0 auto; padding:0 16px; }
+
     header{
       position:sticky; top:0; z-index:20;
       backdrop-filter: blur(12px);
-      background: rgba(6,9,19,.65);
+      background: rgba(7,10,16,.68);
       border-bottom:1px solid var(--line);
     }
     .h{
@@ -52,24 +67,27 @@
       flex:0 0 auto;
     }
     .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .fallback{ font-weight:900; color:rgba(229,231,235,.85); }
+    .fallback{ font-weight:900; color:rgba(231,229,228,.90); }
     .title{ font-weight:900; letter-spacing:.03em; line-height:1.15; }
-    .sub{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55vw; }
+    .sub{ font-size:12px; color:var(--muted2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55vw; }
+
     .cta{
       display:inline-flex; align-items:center; justify-content:center;
       padding:11px 14px;
       border-radius:999px;
       background: var(--accent);
       border:1px solid rgba(255,255,255,.10);
-      box-shadow: 0 16px 40px rgba(124,58,237,.35);
+      box-shadow: 0 16px 40px rgba(124,110,230,.28);
       font-weight:900;
       font-size:13px;
       white-space:nowrap;
       text-decoration:none;
+      color:#fff;
     }
     .cta:hover{ filter:brightness(1.05); }
 
     main{ padding:18px 0 34px; }
+
     .hero{
       background: var(--panel);
       border:1px solid var(--line);
@@ -86,36 +104,42 @@
       margin:0 0 14px;
       color: var(--muted);
       font-size:13px;
-      line-height:1.85;
+      line-height:1.9;
     }
+
     .ctaBig{
       width:100%;
       display:flex;
       justify-content:center;
+      align-items:center;
       gap:10px;
       padding:14px 16px;
       border-radius: 14px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       color:#fff;
       font-weight:1000;
-      letter-spacing:.04em;
+      letter-spacing:.02em;
       border:1px solid rgba(255,255,255,.12);
-      box-shadow: 0 20px 52px rgba(124,58,237,.35);
+      box-shadow: 0 20px 52px rgba(124,110,230,.26);
       text-decoration:none;
       margin-top: 8px;
+      font-size:15px; /* ボタン全体の文字サイズ */
     }
-    .ctaBig small{
-      font-weight:800;
-      opacity:.9;
-      letter-spacing:0;
+    /* 7) （3分）を小さくしない：同サイズ・同ウェイトで統一 */
+    .ctaBig .time{
+      font-size: inherit;
+      font-weight: inherit;
+      opacity: .95;
     }
+
     .micro{
       margin-top:10px;
       font-size:12px;
-      color: rgba(229,231,235,.55);
-      line-height:1.7;
+      color: rgba(231,229,228,.55);
+      line-height:1.75;
     }
 
+    /* ====== 出力例：チャット風 ====== */
     .sample{
       margin-top:14px;
       padding:14px;
@@ -126,41 +150,54 @@
     .badge{
       display:inline-flex; align-items:center; gap:8px;
       font-size:12px;
-      color: rgba(229,231,235,.78);
+      color: rgba(231,229,228,.82);
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
       padding:6px 10px;
       border-radius: 999px;
       margin-bottom:10px;
     }
-    .grid{
-      display:grid;
-      gap:10px;
-    }
-    .card{
-      border-radius: 14px;
+    .chat{
+      margin-top:10px;
       padding:12px;
-      background: rgba(255,255,255,.06);
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .c-row{ display:flex; gap:10px; margin:10px 0; }
+    .c-row.user{ justify-content:flex-end; }
+    .c-bub{
+      max-width: 82%;
+      padding: 10px 12px;
+      border-radius: 16px;
+      line-height: 1.75;
+      font-size: 13px;
       border:1px solid rgba(255,255,255,.10);
+      white-space: pre-line;
     }
-    .k{
-      font-weight:1000;
+    .c-bub.user{
+      background: var(--user);
+      color: var(--userInk);
+      border-color: rgba(0,0,0,.10);
+      border-bottom-right-radius: 6px;
+      font-weight: 900;
+    }
+    .c-bub.bot{
+      background: var(--bot);
+      border-color: var(--botLine);
+      color: rgba(231,229,228,.92);
+      border-bottom-left-radius: 6px;
+    }
+    .c-hint{
+      margin-top:10px;
       font-size:12px;
-      letter-spacing:.12em;
-      color: rgba(34,197,94,.95);
-      margin-bottom:6px;
-    }
-    .k.warn{ color: rgba(253,230,138,.95); }
-    .k.act{ color: rgba(167,139,250,.95); }
-    .v{
-      font-size:13px;
+      color: rgba(231,229,228,.60);
+      border-top:1px solid rgba(255,255,255,.08);
+      padding-top:10px;
       line-height:1.75;
-      color: rgba(229,231,235,.86);
     }
-    .divider{
-      height:1px; background: rgba(255,255,255,.08);
-      margin: 14px 0;
-    }
+
+    /* ====== FAQ ====== */
     .faq{
       margin-top:14px;
       padding:14px;
@@ -176,13 +213,24 @@
     summary{
       cursor:pointer;
       font-weight:1000;
-      color: rgba(229,231,235,.90);
+      color: rgba(231,229,228,.92);
+      list-style:none;
     }
+    summary::-webkit-details-marker{ display:none; }
+    summary:before{
+      content:"▶";
+      display:inline-block;
+      width: 1.2em;
+      color: rgba(231,229,228,.65);
+      transform: translateY(-1px);
+      margin-right: 6px;
+    }
+    details[open] summary:before{ content:"▼"; }
     details p{
       margin:10px 0 0;
-      color: rgba(229,231,235,.70);
+      color: rgba(231,229,228,.72);
       font-size:13px;
-      line-height:1.85;
+      line-height:1.9;
     }
 
     .stickyBottom{
@@ -199,67 +247,116 @@
     <div class="h">
       <div class="brand">
         <div class="avatar" id="botAvatar">
-          <img src="/baya.png" alt="占いばあや" onerror="this.remove();document.getElementById('botAvatar').innerHTML='<div class=&quot;fallback&quot;>ば</div>';">
+          <img src="/baya.png" alt="占いばあや"
+               onerror="this.remove();document.getElementById('botAvatar').innerHTML='<div class=&quot;fallback&quot;>ば</div>';">
         </div>
         <div style="min-width:0;">
           <div class="title">占いばあや</div>
           <div class="sub">相性、結論だけ。無料で3分。</div>
         </div>
       </div>
-      <a class="cta" href="chat.html">無料で開始</a>
+      <a class="cta js-start" href="#">無料で開始</a>
     </div>
   </div>
 </header>
 
 <main class="wrap">
   <section class="hero">
-    <h1>相性、結論だけ。</h1>
+    <!-- 2) タイトル差し替え -->
+    <h1>四柱推命で相性診断</h1>
+
+    <!-- 3) 説明文差し替え -->
     <p class="lead">
-      生年月日と関係性を入れるだけで、<br>
-      <strong>「吉 / 凶 / 一手」</strong>を短くお渡しします。
+      生年月日と関係性を入れるだけで、相性と運勢を読み解き<br>
+      あなた様がこの１週間どうするべきかを鑑定します
     </p>
 
-    <a class="ctaBig" href="chat.html">
-      無料で鑑定をはじめる <small>（3分）</small>
+    <!-- 7) （3分）を小さくしない -->
+    <a class="ctaBig js-start" href="#">
+      無料で鑑定をはじめる <span class="time">（3分）</span>
     </a>
 
+    <!-- 4) 出力例をチャット画面風に大幅変更 -->
     <div class="sample" aria-label="出力例">
-      <div class="badge">出力例（無料版のイメージ）</div>
-      <div class="grid">
-        <div class="card">
-          <div class="k">吉</div>
-          <div class="v">相手の温度差は“気持ちの薄さ”と直結しません。追撃より、整える方が勝ちやすい。</div>
+      <div class="badge">出力例（チャットのイメージ）</div>
+
+      <div class="chat">
+        <div class="c-row user">
+          <div class="c-bub user">都合のいい扱いをされてる気がします。</div>
         </div>
-        <div class="card">
-          <div class="k warn">凶</div>
-          <div class="v">不安のまま確認LINEを重ねると、相手の逃げ道を塞ぎやすい。</div>
+
+        <div class="c-row">
+          <div class="c-bub bot">承知いたしました。焦らず、事実と感情を分けて拝見いたしますね。</div>
         </div>
-        <div class="card">
-          <div class="k act">一手</div>
-          <div class="v"><strong>用件1つ＋期限なし</strong>で1通だけ。返事待ちの間に“次の予定”を先に確保して心を安定させる。</div>
+
+        <div class="c-row">
+          <div class="c-bub bot">あなたとお相手様の相性を見る限り、関係が切れる兆しではなく、<br>“主導権の偏り”が出やすい流れです。</div>
         </div>
+
+        <div class="c-row">
+          <div class="c-bub bot">この１週間は、次の三点に絞って整えるのがよろしいでしょう。<br>
+          ①返信や会う頻度の“基準”をあなた側で決める<br>
+          ②確認ではなく“提案”の形で一度だけ打診する<br>
+          ③反応が薄い場合は、追いかけず予定を先に入れて心を安定させる</div>
+        </div>
+
+        <div class="c-row user">
+          <div class="c-bub user">今すぐ何か送った方がいいですか？</div>
+        </div>
+
+        <div class="c-row">
+          <div class="c-bub bot">結論だけ申し上げます。<br><strong>今日は追撃せず、明日“用件1つ”で短く。</strong><br>
+          文面も一緒に整えますので、関係性と直近の出来事を教えてくださいませ。</div>
+        </div>
+
+        <div class="c-hint">※ 実際の鑑定では、生年月日・関係性・直近の出来事から「相性」と「１週間の運勢」を読み、行動に落とします。</div>
       </div>
 
-      <div class="divider"></div>
-
+      <!-- 5) FAQの文言・追加 -->
       <div class="faq" aria-label="よくある質問">
         <details>
-          <summary>課金されますか？</summary>
-          <p>無料で始められます。有料に進む場合は、ボタンを押してから決済する設計にしてください（自動課金に見える導線は避けるのが無難です）。</p>
+          <summary>無料ですか？</summary>
+          <p>はい、まずは無料で鑑定できます。有料版をご用意する場合も、必ず“押してから決済”の流れにします（勝手に課金されることはありません）。</p>
         </details>
+
+        <details>
+          <summary>どうやって占うんですか？</summary>
+          <p>四柱推命（生年月日にもとづく命式）を軸に、相性の出やすい論点と、運勢の波（特に今週の動き）を読みます。最後に「この１週間の一手」に落としてお渡しします。</p>
+        </details>
+
         <details>
           <summary>入力内容は保存されますか？</summary>
-          <p>実装に合わせて明記してください。「端末内のみ」「サーバ保存なし」など、範囲を一文で断言すると信頼が上がります。</p>
+          <p>現状の実装に合わせて明記してください。たとえば「端末内（ローカル）にのみ保存し、サーバには保存しません」など、範囲を一文で断言すると信頼が上がります。</p>
         </details>
       </div>
 
       <div class="stickyBottom">
-        <a class="ctaBig" href="chat.html">無料で鑑定をはじめる</a>
+        <a class="ctaBig js-start" href="#">
+          無料で鑑定をはじめる <span class="time">（3分）</span>
+        </a>
         <div class="micro">※ 実在の人物とは無関係です。／鑑定結果は意思決定の補助を目的とするコンテンツです。</div>
       </div>
     </div>
   </section>
 </main>
+
+<script>
+  /**
+   * 6) 404対策：ここをあなたの実ファイル/ルートに合わせて1行だけ変更
+   * 例）
+   *  - 同じ階層に chat.html がある → "chat.html"
+   *  - ルート配下 /chat にある（Next.js等）→ "/chat"
+   *  - /fortune/chat.html にある → "/fortune/chat.html"
+   */
+  const CHAT_PATH = "chat.html";
+
+  document.querySelectorAll(".js-start").forEach(a=>{
+    a.addEventListener("click", (e)=>{
+      e.preventDefault();
+      window.location.href = CHAT_PATH;
+    });
+  });
+</script>
 
 </body>
 </html>
