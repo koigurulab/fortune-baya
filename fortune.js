@@ -1,21 +1,24 @@
 const STORAGE_KEY = "fortune_intake_v1_2";
 
 const STATES = {
+  ASK_USER_BDAY: "ASK_USER_BDAY",           // 必須（不明ボタン無し）
   ASK_USER_GENDER: "ASK_USER_GENDER",
-  ASK_USER_BDAY: "ASK_USER_BDAY",
-  ASK_USER_BTIME: "ASK_USER_BTIME",
-  ASK_USER_PREF: "ASK_USER_PREF",
-  ASK_USER_MBTI: "ASK_USER_MBTI",
+  ASK_USER_BTIME: "ASK_USER_BTIME",         // 不明OK
+  ASK_USER_PREF: "ASK_USER_PREF",           // 自由入力
+  ASK_USER_MBTI: "ASK_USER_MBTI",           // 不明OK
+
   MINI_READ_USER: "MINI_READ_USER",
 
-  ASK_PARTNER_BDAY: "ASK_PARTNER_BDAY",
+  ASK_PARTNER_BDAY: "ASK_PARTNER_BDAY",     // 不明入力OK（ボタンは出さない）
+  ASK_PARTNER_GENDER: "ASK_PARTNER_GENDER",
+  ASK_PARTNER_PREF: "ASK_PARTNER_PREF",     // 相手の出身地（自由入力 / 不明OK）
   ASK_PARTNER_AGE_RANGE: "ASK_PARTNER_AGE_RANGE",
-  ASK_PARTNER_BTIME: "ASK_PARTNER_BTIME",
-  ASK_PARTNER_PREF: "ASK_PARTNER_PREF",
-  ASK_PARTNER_MBTI: "ASK_PARTNER_MBTI",
+  ASK_PARTNER_BTIME: "ASK_PARTNER_BTIME",   // 不明OK
+  ASK_PARTNER_MBTI: "ASK_PARTNER_MBTI",     // 不明OK
 
   ASK_RELATION: "ASK_RELATION",
   ASK_RECENT_EVENT: "ASK_RECENT_EVENT",
+
   MINI_READ_PARTNER: "MINI_READ_PARTNER",
 
   ASK_CONCERN_LONG: "ASK_CONCERN_LONG",
@@ -34,16 +37,17 @@ function newIntake() {
       must_output: ["吉", "凶", "一手"],
     },
     user: {
-      gender: null,
       birthday: null,
+      gender: null,
       birth_time: null,
       birth_prefecture: null,
       mbti: null,
     },
     partner: {
       birthday: null,
+      gender: null,
+      birth_prefecture: null,
       birth_time: null,
-      birth_prefecture: null, // 相手の出身地
       mbti: null,
       age_range: null,
       relation: null,
@@ -60,23 +64,20 @@ function newIntake() {
 }
 
 let intake = loadIntake();
-let state = STATES.ASK_USER_GENDER;
+let state = STATES.ASK_USER_BDAY;
 
 const chatEl = document.getElementById("chat");
 const formEl = document.getElementById("form");
 const inputEl = document.getElementById("input");
 const resetBtn = document.getElementById("reset");
 
-const choicesBox = document.getElementById("choices");
-const choicesRow = document.getElementById("choicesRow");
-
-// paid
-const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+const choicesEl = document.getElementById("choices");
+const choicesBodyEl = document.getElementById("choicesBody");
 
 resetBtn.addEventListener("click", () => {
   localStorage.removeItem(STORAGE_KEY);
   intake = newIntake();
-  state = STATES.ASK_USER_GENDER;
+  state = STATES.ASK_USER_BDAY;
   chatEl.innerHTML = "";
   hideChoices();
   hidePaidActions();
@@ -87,21 +88,8 @@ formEl.addEventListener("submit", async (e) => {
   e.preventDefault();
   const v = inputEl.value.trim();
   if (!v) return;
-  inputEl.value = "";
-  await submitAnswer(v);
+  await handleAnswer(v);
 });
-
-async function submitAnswer(v) {
-  pushUser(v);
-
-  const ok = applyAnswer(state, v);
-  if (!ok) {
-    pushBot("恐れ入ります。形式が少し違うようです。もう一度、例に沿って教えてくださいませ。");
-    return;
-  }
-
-  await advance();
-}
 
 function boot() {
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
@@ -112,15 +100,15 @@ boot();
 function ask(s) {
   const q = questionFor(s);
   if (q) pushBot(q);
-  renderChoicesForState(s);
+  renderChoicesFor(s);
 }
 
 function questionFor(s) {
   switch (s) {
-    case STATES.ASK_USER_GENDER:
-      return "まず、あなた様の性別をお伺いしてもよろしいですか。";
     case STATES.ASK_USER_BDAY:
-      return "次に、あなた様の生年月日を西暦でお教えくださいませ。（例：2003/01/07）";
+      return "まず、あなた様の生年月日を西暦でお教えくださいませ。（例：2003/01/07）";
+    case STATES.ASK_USER_GENDER:
+      return "差し支えなければ、あなた様の性別をお伺いしてもよろしいですか。";
     case STATES.ASK_USER_BTIME:
       return "出生時刻が分かればお教えくださいませ。不明でも大丈夫でございます。（例：05:15 / 不明）";
     case STATES.ASK_USER_PREF:
@@ -129,13 +117,15 @@ function questionFor(s) {
       return "MBTIは何型でしょう？分からなければ“不明”で結構です。";
 
     case STATES.ASK_PARTNER_BDAY:
-      return "次にお相手様です。生年月日（西暦）をお教えくださいませ。（例：2002/05/03）";
+      return "次にお相手様です。生年月日（西暦）は分かりますか？分からなければ“不明”とご入力くださいませ。";
+    case STATES.ASK_PARTNER_GENDER:
+      return "差し支えなければ、お相手様の性別も伺ってよろしいですか。";
+    case STATES.ASK_PARTNER_PREF:
+      return "お相手様の出身地（都道府県）を伺ってもよろしいですか。分からなければ“不明”で結構です。";
     case STATES.ASK_PARTNER_AGE_RANGE:
-      return "差し支えなければ、お相手様の年代だけ。（例：20代前半／20代後半／30代前半）";
+      return "では差し支えなければ、お相手様の年代だけ。（例：20代前半／20代後半／30代前半）";
     case STATES.ASK_PARTNER_BTIME:
       return "お相手様の出生時刻が分かればお教えくださいませ。不明で結構です。";
-    case STATES.ASK_PARTNER_PREF:
-      return "お相手様の出身地（都道府県）が分かれば、お教えくださいませ。不明でも結構です。";
     case STATES.ASK_PARTNER_MBTI:
       return "お相手様のMBTIは分かりますか？分からなければ“不明”で結構です。";
 
@@ -150,172 +140,215 @@ function questionFor(s) {
   }
 }
 
-/**
- * ここがキモ：
- * - stateに応じて「選択肢ボタン」「不明ボタン」を出す
- * - 生年月日（自分・相手）には不明を出さない（要件）
- */
-function renderChoicesForState(s) {
-  const spec = choicesSpec(s);
-  if (!spec) {
+/** ========= choices (quick replies) ========= */
+
+function hideChoices() {
+  choicesEl.classList.add("is-hidden");
+  choicesBodyEl.innerHTML = "";
+}
+
+function showChoices() {
+  choicesEl.classList.remove("is-hidden");
+}
+
+function chip(label, value, extraClass = "") {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `chip ${extraClass}`.trim();
+  btn.textContent = label;
+  btn.onclick = () => handleAnswer(value);
+  return btn;
+}
+
+function renderChoicesFor(s) {
+  // DONE 以降は隠す
+  if (s === STATES.DONE || s === STATES.FREE_REPORT) {
     hideChoices();
     return;
   }
 
-  const { options, allowUnknown } = spec;
-  const items = [...options];
+  choicesBodyEl.innerHTML = "";
 
-  if (allowUnknown) items.push({ label: "不明", value: "不明", kind: "primary" });
+  // 生年月日：date picker（本人は必須なので“不明”ボタン無し）
+  if (s === STATES.ASK_USER_BDAY) {
+    showChoices();
+    const box = document.createElement("div");
+    box.className = "picker";
 
-  showChoices(items);
-}
+    const input = document.createElement("input");
+    input.type = "date";
+    input.id = "pickUserBday";
 
-function choicesSpec(s) {
-  const MBTI = [
-    "INTJ","INTP","ENTJ","ENTP",
-    "INFJ","INFP","ENFJ","ENFP",
-    "ISTJ","ISFJ","ESTJ","ESFJ",
-    "ISTP","ISFP","ESTP","ESFP"
-  ].map(x => ({ label: x, value: x }));
-
-  switch (s) {
-    case STATES.ASK_USER_GENDER:
-      return {
-        options: [
-          { label: "女性", value: "女性", kind: "primary" },
-          { label: "男性", value: "男性", kind: "primary" },
-          { label: "その他", value: "その他/答えたくない", kind: "primary" },
-        ],
-        allowUnknown: false,
-      };
-
-    case STATES.ASK_USER_BTIME:
-    case STATES.ASK_PARTNER_BTIME:
-      return {
-        options: [
-          { label: "00:00", value: "00:00" },
-          { label: "06:00", value: "06:00" },
-          { label: "12:00", value: "12:00" },
-          { label: "18:00", value: "18:00" },
-        ],
-        allowUnknown: true,
-      };
-
-    case STATES.ASK_USER_MBTI:
-    case STATES.ASK_PARTNER_MBTI:
-      return { options: MBTI, allowUnknown: true };
-
-    case STATES.ASK_PARTNER_AGE_RANGE:
-      return {
-        options: [
-          { label: "10代", value: "10代" },
-          { label: "20代前半", value: "20代前半" },
-          { label: "20代後半", value: "20代後半" },
-          { label: "30代前半", value: "30代前半" },
-          { label: "30代後半", value: "30代後半" },
-          { label: "40代以上", value: "40代以上" },
-        ],
-        allowUnknown: true,
-      };
-
-    case STATES.ASK_PARTNER_PREF:
-      return {
-        options: [],
-        allowUnknown: true,
-      };
-
-    default:
-      // 生年月日や自由記述は選択肢なし
-      return null;
-  }
-}
-
-function showChoices(items) {
-  choicesBox.classList.remove("is-hidden");
-  choicesRow.innerHTML = "";
-
-  // ボタン生成
-  for (const item of items) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = `chip ${item.kind === "primary" ? "primary" : ""}`.trim();
-    btn.textContent = item.label;
-
-    btn.onclick = async () => {
-      // 送信と同じ経路へ流す
-      await submitAnswer(item.value);
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn";
+    ok.textContent = "決定";
+    ok.onclick = () => {
+      if (!input.value) return;
+      handleAnswer(input.value); // YYYY-MM-DD
     };
 
-    choicesRow.appendChild(btn);
+    box.appendChild(input);
+    box.appendChild(ok);
+    choicesBodyEl.appendChild(box);
+    return;
   }
+
+  // 相手の生年月日：date picker（不明ボタンは出さないが“不明”入力は許可）
+  if (s === STATES.ASK_PARTNER_BDAY) {
+    showChoices();
+    const box = document.createElement("div");
+    box.className = "picker";
+
+    const input = document.createElement("input");
+    input.type = "date";
+    input.id = "pickPartnerBday";
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn";
+    ok.textContent = "決定";
+    ok.onclick = () => {
+      if (!input.value) return;
+      handleAnswer(input.value);
+    };
+
+    box.appendChild(input);
+    box.appendChild(ok);
+    choicesBodyEl.appendChild(box);
+    // 不明はボタンで出さない（要件）
+    return;
+  }
+
+  // 性別（本人/相手）
+  if (s === STATES.ASK_USER_GENDER || s === STATES.ASK_PARTNER_GENDER) {
+    showChoices();
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    row.appendChild(chip("女性", "女性", "primary"));
+    row.appendChild(chip("男性", "男性", "primary"));
+    row.appendChild(chip("その他/答えたくない", "その他/答えたくない"));
+    choicesBodyEl.appendChild(row);
+    return;
+  }
+
+  // 出生時刻（本人/相手）：time picker + presets + 不明
+  if (s === STATES.ASK_USER_BTIME || s === STATES.ASK_PARTNER_BTIME) {
+    showChoices();
+
+    const picker = document.createElement("div");
+    picker.className = "picker";
+
+    const t = document.createElement("input");
+    t.type = "time";
+    t.step = "60";
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn";
+    ok.textContent = "決定";
+    ok.onclick = () => {
+      if (!t.value) return;
+      handleAnswer(t.value); // HH:MM
+    };
+
+    picker.appendChild(t);
+    picker.appendChild(ok);
+    choicesBodyEl.appendChild(picker);
+
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    row.appendChild(chip("00:00", "00:00", "primary"));
+    row.appendChild(chip("06:00", "06:00", "primary"));
+    row.appendChild(chip("12:00", "12:00", "primary"));
+    row.appendChild(chip("18:00", "18:00", "primary"));
+    row.appendChild(chip("不明", "不明"));
+    choicesBodyEl.appendChild(row);
+    return;
+  }
+
+  // MBTI（本人/相手）：16 + 不明
+  if (s === STATES.ASK_USER_MBTI || s === STATES.ASK_PARTNER_MBTI) {
+    showChoices();
+    const mbtis = [
+      "INTJ","INTP","ENTJ","ENTP",
+      "INFJ","INFP","ENFJ","ENFP",
+      "ISTJ","ISFJ","ESTJ","ESFJ",
+      "ISTP","ISFP","ESTP","ESFP"
+    ];
+
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    mbtis.forEach(m => row.appendChild(chip(m, m, "primary")));
+    row.appendChild(chip("不明", "不明"));
+    choicesBodyEl.appendChild(row);
+    return;
+  }
+
+  // それ以外：選択肢なし
+  hideChoices();
 }
 
-function hideChoices() {
-  choicesBox.classList.add("is-hidden");
-  choicesRow.innerHTML = "";
+/** ========= main flow ========= */
+
+async function handleAnswer(v) {
+  pushUser(v);
+  inputEl.value = "";
+
+  const ok = applyAnswer(state, v);
+  if (!ok) {
+    pushBot("恐れ入ります。形式が少し違うようです。もう一度、例に沿って教えてくださいませ。");
+    return;
+  }
+
+  await advance();
 }
 
-function applyAnswer(s, vRaw) {
-  const v = String(vRaw ?? "").trim();
-
+function applyAnswer(s, v) {
   try {
-    // USER
+    // user
+    if (s === STATES.ASK_USER_BDAY) {
+      if (!isDate(v)) return false;
+      intake.user.birthday = normDate(v);
+    }
     if (s === STATES.ASK_USER_GENDER) {
       if (v.length < 1) return false;
       intake.user.gender = v;
     }
-
-    if (s === STATES.ASK_USER_BDAY) {
-      // 要件：ここは不明禁止
-      if (!isDate(v)) return false;
-      intake.user.birthday = normDate(v);
-    }
-
     if (s === STATES.ASK_USER_BTIME) {
       if (!isTimeOrUnknown(v)) return false;
       intake.user.birth_time = normTimeOrNull(v);
     }
-
     if (s === STATES.ASK_USER_PREF) {
       if (v.length < 2) return false;
       intake.user.birth_prefecture = v;
     }
-
     if (s === STATES.ASK_USER_MBTI) {
       if (!isMbtiOrUnknown(v)) return false;
       intake.user.mbti = normMbtiOrNull(v);
     }
 
-    // PARTNER
+    // partner
     if (s === STATES.ASK_PARTNER_BDAY) {
-      // 要件：相手も不明禁止（信用問題）
-      if (!isDate(v)) return false;
-      intake.partner.birthday = normDate(v);
+      // 不明入力は許可（ただしボタンは出さない）
+      intake.partner.birthday = normDateOrNull(v);
     }
-
+    if (s === STATES.ASK_PARTNER_GENDER) {
+      if (v.length < 1) return false;
+      intake.partner.gender = v;
+    }
+    if (s === STATES.ASK_PARTNER_PREF) {
+      if (v.length < 1) return false;
+      intake.partner.birth_prefecture = v.trim() === "" ? null : v.trim();
+    }
     if (s === STATES.ASK_PARTNER_AGE_RANGE) {
-      if (v === "不明") {
-        intake.partner.age_range = null;
-      } else {
-        if (v.length < 2) return false;
-        intake.partner.age_range = v;
-      }
+      if (v.length < 3) return false;
+      intake.partner.age_range = v;
     }
-
     if (s === STATES.ASK_PARTNER_BTIME) {
       if (!isTimeOrUnknown(v)) return false;
       intake.partner.birth_time = normTimeOrNull(v);
     }
-
-    if (s === STATES.ASK_PARTNER_PREF) {
-      if (v === "不明") {
-        intake.partner.birth_prefecture = null;
-      } else {
-        if (v.length < 2) return false;
-        intake.partner.birth_prefecture = v;
-      }
-    }
-
     if (s === STATES.ASK_PARTNER_MBTI) {
       if (!isMbtiOrUnknown(v)) return false;
       intake.partner.mbti = normMbtiOrNull(v);
@@ -325,12 +358,10 @@ function applyAnswer(s, vRaw) {
       if (v.length < 2) return false;
       intake.partner.relation = v;
     }
-
     if (s === STATES.ASK_RECENT_EVENT) {
       if (v.length < 2) return false;
       intake.partner.recent_event = v;
     }
-
     if (s === STATES.ASK_CONCERN_LONG) {
       if (v.length < 30) return false;
       intake.concern.free_text = v;
@@ -340,32 +371,18 @@ function applyAnswer(s, vRaw) {
     saveIntake(intake);
     return true;
   } catch (e) {
+    console.error(e);
     return false;
   }
 }
 
 async function advance() {
-  // USER FLOW
-  if (state === STATES.ASK_USER_GENDER) {
-    state = STATES.ASK_USER_BDAY;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_USER_BDAY) {
-    state = STATES.ASK_USER_BTIME;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_USER_BTIME) {
-    state = STATES.ASK_USER_PREF;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_USER_PREF) {
-    state = STATES.ASK_USER_MBTI;
-    ask(state);
-    return;
-  }
+  // user flow
+  if (state === STATES.ASK_USER_BDAY) { state = STATES.ASK_USER_GENDER; ask(state); return; }
+  if (state === STATES.ASK_USER_GENDER) { state = STATES.ASK_USER_BTIME; ask(state); return; }
+  if (state === STATES.ASK_USER_BTIME) { state = STATES.ASK_USER_PREF; ask(state); return; }
+  if (state === STATES.ASK_USER_PREF) { state = STATES.ASK_USER_MBTI; ask(state); return; }
+
   if (state === STATES.ASK_USER_MBTI) {
     hideChoices();
     state = STATES.MINI_READ_USER;
@@ -379,40 +396,21 @@ async function advance() {
     return;
   }
 
-  // PARTNER FLOW
-  if (state === STATES.ASK_PARTNER_BDAY) {
-    // 相手の生年月日がある前提なので年代はスキップ（必要なら残してOK）
-    state = STATES.ASK_PARTNER_BTIME;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_PARTNER_AGE_RANGE) {
-    state = STATES.ASK_PARTNER_BTIME;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_PARTNER_BTIME) {
-    state = STATES.ASK_PARTNER_PREF;
-    ask(state);
-    return;
-  }
+  // partner flow
+  if (state === STATES.ASK_PARTNER_BDAY) { state = STATES.ASK_PARTNER_GENDER; ask(state); return; }
+  if (state === STATES.ASK_PARTNER_GENDER) { state = STATES.ASK_PARTNER_PREF; ask(state); return; }
+
   if (state === STATES.ASK_PARTNER_PREF) {
-    state = STATES.ASK_PARTNER_MBTI;
-    ask(state);
-    return;
-  }
-  if (state === STATES.ASK_PARTNER_MBTI) {
-    state = STATES.ASK_RELATION;
+    // 生年月日が不明なら年代を聞く、分かるなら出生時刻へ
+    state = intake.partner.birthday ? STATES.ASK_PARTNER_BTIME : STATES.ASK_PARTNER_AGE_RANGE;
     ask(state);
     return;
   }
 
-  // RELATION
-  if (state === STATES.ASK_RELATION) {
-    state = STATES.ASK_RECENT_EVENT;
-    ask(state);
-    return;
-  }
+  if (state === STATES.ASK_PARTNER_AGE_RANGE) { state = STATES.ASK_PARTNER_BTIME; ask(state); return; }
+  if (state === STATES.ASK_PARTNER_BTIME) { state = STATES.ASK_PARTNER_MBTI; ask(state); return; }
+  if (state === STATES.ASK_PARTNER_MBTI) { state = STATES.ASK_RELATION; ask(state); return; }
+  if (state === STATES.ASK_RELATION) { state = STATES.ASK_RECENT_EVENT; ask(state); return; }
 
   if (state === STATES.ASK_RECENT_EVENT) {
     hideChoices();
@@ -434,6 +432,7 @@ async function advance() {
     pushBotHtml(out.html);
     state = STATES.DONE;
 
+    // 有料テストボタン表示
     showPaidActions();
     bindPaidActions(() => intake);
 
@@ -442,11 +441,13 @@ async function advance() {
   }
 }
 
-async function generate(mode, intakeObj) {
+/** ========= API ========= */
+
+async function generate(mode, intake) {
   const res = await fetch("/api/fortune-generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, intake: intakeObj }),
+    body: JSON.stringify({ mode, intake }),
   });
 
   if (!res.ok) {
@@ -458,68 +459,41 @@ async function generate(mode, intakeObj) {
   return await res.json();
 }
 
-/* paid actions */
+/** ========= Paid actions ========= */
+
+const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+
+function showPaidActions() {
+  const box = document.getElementById("paidActions");
+  const note = document.getElementById("paidActionsNote");
+  if (!box) return;
+  box.classList.remove("is-hidden");
+  if (DEV_PAID && note) note.classList.remove("is-hidden");
+}
+
 function hidePaidActions() {
   const box = document.getElementById("paidActions");
   if (box) box.classList.add("is-hidden");
 }
 
-function showPaidActions() {
-  const box = document.getElementById("paidActions");
-  const note = document.getElementById("paidActionsNote");
-  const dev480 = document.getElementById("btnDevPaid480");
-  const dev980 = document.getElementById("btnDevPaid980");
-
-  if (!box) return;
-
-  box.classList.remove("is-hidden");
-
-  if (DEV_PAID) {
-    if (note) note.classList.remove("is-hidden");
-    if (dev480) dev480.classList.remove("is-hidden");
-    if (dev980) dev980.classList.remove("is-hidden");
-  } else {
-    if (note) note.classList.add("is-hidden");
-    if (dev480) dev480.classList.add("is-hidden");
-    if (dev980) dev980.classList.add("is-hidden");
-  }
-}
-
 function setPaidButtonsEnabled(enabled) {
-  const ids = ["btnPaid480", "btnPaid980", "btnDevPaid480", "btnDevPaid980"];
-  for (const id of ids) {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !enabled;
-  }
+  const b480 = document.getElementById("btnPaid480");
+  const b980 = document.getElementById("btnPaid980");
+  if (b480) b480.disabled = !enabled;
+  if (b980) b980.disabled = !enabled;
 }
 
 function bindPaidActions(intakeRefGetter) {
-  // 本番：ここはStripeへ遷移（準備中なので今は何もしない）
-  const paid480 = document.getElementById("btnPaid480");
-  const paid980 = document.getElementById("btnPaid980");
+  const b480 = document.getElementById("btnPaid480");
+  const b980 = document.getElementById("btnPaid980");
 
-  if (paid480) {
-    paid480.onclick = () => {
-      pushBot("ただいま準備中でございます。もう少々お待ちくださいませ。");
-    };
-  }
-  if (paid980) {
-    paid980.onclick = () => {
-      pushBot("ただいま準備中でございます。もう少々お待ちくださいませ。");
-    };
-  }
-
-  // テスト：決済なしで生成
-  const dev480 = document.getElementById("btnDevPaid480");
-  const dev980 = document.getElementById("btnDevPaid980");
-
-  if (dev480) {
-    dev480.onclick = async () => {
+  if (b480) {
+    b480.onclick = async () => {
       try {
         setPaidButtonsEnabled(false);
-        pushBot("承知しました。480円版（テスト）の鑑定をお出しします…");
+        pushBot("承知しました。480円版の鑑定をお出しします…");
         const it = intakeRefGetter();
-        const out = await generate("paid_300", it); // 互換：mode名はあなたのAPI側に合わせる
+        const out = await generate("paid_480", it); // ※サーバ側モード名に合わせてください（paid_300なら変更）
         pushBot(out.text || out.html || "");
       } catch (e) {
         pushBot("申し訳ございません。480円版の生成に失敗しました。");
@@ -530,11 +504,11 @@ function bindPaidActions(intakeRefGetter) {
     };
   }
 
-  if (dev980) {
-    dev980.onclick = async () => {
+  if (b980) {
+    b980.onclick = async () => {
       try {
         setPaidButtonsEnabled(false);
-        pushBot("承知しました。980円版（テスト）の鑑定をお出しします…");
+        pushBot("承知しました。980円版の鑑定をお出しします…");
         const it = intakeRefGetter();
         const out = await generate("paid_980", it);
         pushBot(out.text || out.html || "");
@@ -548,7 +522,8 @@ function bindPaidActions(intakeRefGetter) {
   }
 }
 
-/* UI helpers */
+/** ========= UI helpers ========= */
+
 function pushBot(t) {
   chatEl.insertAdjacentHTML("beforeend", `<div class="msg bot">${escapeHtml(t)}</div>`);
   chatEl.scrollTop = chatEl.scrollHeight;
@@ -562,22 +537,32 @@ function pushUser(t) {
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-function saveIntake(itk) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(itk));
-}
+function saveIntake(itk) { localStorage.setItem(STORAGE_KEY, JSON.stringify(itk)); }
 function loadIntake() {
   const s = localStorage.getItem(STORAGE_KEY);
-  return s ? JSON.parse(s) : newIntake();
+  if (!s) return newIntake();
+  try {
+    const parsed = JSON.parse(s);
+    // バージョン違いなら作り直し（UI崩れ回避）
+    if (!parsed?.version || parsed.version !== "1.2") return newIntake();
+    return parsed;
+  } catch {
+    return newIntake();
+  }
 }
 
-/* validators */
-function isDate(v) {
-  // 2003/01/07 or 2003-01-07
-  return /^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v.trim());
+/** ========= validators ========= */
+
+// date: allow YYYY/MM/DD or YYYY-MM-DD (input[type=date] => YYYY-MM-DD)
+function isDate(v) { return /^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v.trim()); }
+function normDate(v) { return v.trim().replaceAll("/", "-"); }
+function normDateOrNull(v) {
+  const t = v.trim();
+  if (!t || t === "不明" || t.toLowerCase() === "unknown") return null;
+  if (!isDate(t)) return null; // 相手の誤入力は null 扱いにして落とさない
+  return normDate(t);
 }
-function normDate(v) {
-  return v.trim().replaceAll("/", "-");
-}
+
 function isTimeOrUnknown(v) {
   const t = v.trim();
   if (t === "不明" || t.toLowerCase() === "unknown") return true;
@@ -588,6 +573,7 @@ function normTimeOrNull(v) {
   if (!t || t === "不明" || t.toLowerCase() === "unknown") return null;
   return t;
 }
+
 function isMbtiOrUnknown(v) {
   const t = v.trim().toUpperCase();
   if (t === "不明" || t === "UNKNOWN") return true;
@@ -600,7 +586,8 @@ function normMbtiOrNull(v) {
 }
 
 function escapeHtml(s) {
-  return String(s)
+  const str = String(s ?? "");
+  return str
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
