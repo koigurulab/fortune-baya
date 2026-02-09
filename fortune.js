@@ -4,7 +4,7 @@ const STORAGE_KEY = "fortune_intake_v1_3";
  * 画像を使うなら public/baya.png を置いて "/baya.png" にしてください。
  * 置かない場合は丸アイコンに「ば」が表示されます。
  */
-const BOT_AVATAR_URL = ""; // 例: "/baya.png"
+const BOT_AVATAR_URL = "/baya.png";
 
 const STATES = {
   ASK_USER_BDAY: "ASK_USER_BDAY",        // 必須（不明ボタン無し）
