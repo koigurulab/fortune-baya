@@ -14,6 +14,8 @@
       --line: #e5e7eb;
       --accent: #7c3aed;
       --accent-weak: #ede9fe;
+      --chip-bg: #fff;
+      --chip-border: #ddd6fe;
     }
 
     * { box-sizing: border-box; }
@@ -68,14 +70,14 @@
       min-height: 55vh;
     }
 
-    /* ここが改行対策の本丸 */
+    /* 改行保持 */
     .msg {
       padding: 10px 12px;
       border-radius: 12px;
       margin: 10px 0;
       line-height: 1.6;
-      white-space: pre-wrap;   /* 改行を保持 */
-      word-break: break-word;  /* 長文折り返し */
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .msg.bot {
@@ -96,6 +98,7 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       background: var(--card);
+      align-items: center;
     }
 
     .input {
@@ -127,27 +130,107 @@
     .actions {
       display: flex;
       justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ▼ 下部の選択肢ボタン（画像のUIっぽいもの） */
+    .quickbar {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quickbar__hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--chip-border);
+      background: var(--chip-bg);
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .chip:hover { opacity: 0.95; }
+
+    .chip.is-active {
+      background: var(--accent-weak);
+      border-color: #c4b5fd;
+      color: #4c1d95;
+    }
+
+    .chips.grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .chips.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    /* ▼ 有料アクション */
+    .is-hidden { display: none !important; }
+
+    .paid-actions {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .paid-actions__title {
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .paid-actions__btn {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: white;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .paid-actions__btn--primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .paid-actions__btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .paid-actions__note {
+      color: var(--muted);
+      font-size: 12px;
     }
   </style>
 </head>
-  
-<!-- Paid actions (hidden by default) -->
-<div id="paidActions" class="paid-actions is-hidden">
-  <div class="paid-actions__title">有料レポート</div>
 
-  <button id="btnPaid300" class="paid-actions__btn paid-actions__btn--primary">
-    300円版を出す（テスト）
-  </button>
-
-  <button id="btnPaid980" class="paid-actions__btn">
-    980円版を出す（テスト）
-  </button>
-
-  <div id="paidActionsNote" class="paid-actions__note is-hidden">
-    ※テスト中：決済なしで生成しています
-  </div>
-</div>
-  
 <body>
   <main class="wrap">
     <header class="chat-head">
@@ -157,10 +240,35 @@
 
     <section id="chat" class="chat"></section>
 
+    <!-- ▼ 下の選択肢（状態に応じて中身をJSで差し替える） -->
+    <section id="quickbar" class="quickbar">
+      <div id="quickHint" class="quickbar__hint">
+        選択肢を押すか、下の自由入力でも回答できます。
+      </div>
+      <div id="chips" class="chips"></div>
+    </section>
+
     <form id="form" class="composer">
       <input id="input" class="input" placeholder="ここに入力…" autocomplete="off" />
       <button class="btn" type="submit">送信</button>
     </form>
+
+    <!-- Paid actions (hidden by default) -->
+    <div id="paidActions" class="paid-actions is-hidden">
+      <div class="paid-actions__title">有料レポート</div>
+
+      <button id="btnPaid300" class="paid-actions__btn paid-actions__btn--primary">
+        480円版を出す（テスト）
+      </button>
+
+      <button id="btnPaid980" class="paid-actions__btn">
+        980円版を出す（テスト）
+      </button>
+
+      <div id="paidActionsNote" class="paid-actions__note is-hidden">
+        ※テスト中：決済なしで生成しています
+      </div>
+    </div>
 
     <div class="actions">
       <button id="reset" class="btn secondary">最初から</button>
