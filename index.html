@@ -1,846 +1,559 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>占いばあやの鑑定｜相性と今の一手を、静かに言語化</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>占いばあやの鑑定｜相性、結論と一手だけ。</title>
+  <meta name="description" content="生年月日と関係性を入れるだけ。3分で『結論』と『一手』をお渡しします。まずは無料で。">
   <style>
     :root{
-      --bg1:#0b1220;
-      --bg2:#0a0f1c;
-      --card:#0f172a;
-      --card2:#111c33;
-      --ink:#e5e7eb;
-      --muted:#9ca3af;
-      --line:rgba(148,163,184,.18);
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --line: rgba(255,255,255,.10);
+      --ink: #e5e7eb;
+      --muted:#a5b4fc;
+      --muted2:#94a3b8;
 
-      --accent:#7c3aed;       /* 紫（上品） */
-      --accent2:#a78bfa;      /* 薄紫 */
-      --accent-dark:#6d28d9;
+      --bot: rgba(255,255,255,.08);
+      --user: #22c55e;
 
-      --good:#34d399;
-      --warn:#fbbf24;
-
-      --shadow: 0 18px 46px rgba(0,0,0,.35);
+      --accent: #7c3aed;
+      --accent2:#a78bfa;
+      --warn:#fde68a;
+      --shadow: 0 20px 60px rgba(0,0,0,.45);
       --radius: 18px;
+      --radius2: 22px;
     }
-    *{ box-sizing:border-box; }
 
+    *{ box-sizing:border-box; }
     body{
       margin:0;
       color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
       background:
-        radial-gradient(1000px 500px at 15% 10%, rgba(124,58,237,.35), transparent 55%),
-        radial-gradient(900px 500px at 85% 20%, rgba(167,139,250,.25), transparent 60%),
-        radial-gradient(1200px 700px at 50% 80%, rgba(14,165,233,.10), transparent 60%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      font-family:
-        -apple-system, BlinkMacSystemFont,
-        "Segoe UI","Helvetica Neue",
-        "Yu Gothic UI","Yu Gothic","Meiryo",
-        sans-serif;
-      font-size:14px;
-      line-height:1.75;
+        radial-gradient(900px 500px at 15% 10%, rgba(124,58,237,.40), transparent 60%),
+        radial-gradient(900px 500px at 85% 0%, rgba(34,197,94,.22), transparent 55%),
+        radial-gradient(900px 700px at 50% 100%, rgba(167,139,250,.18), transparent 60%),
+        linear-gradient(180deg, #050a14, #0b1220 40%, #0b1220);
+      min-height:100vh;
     }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1040px; margin:0 auto; padding:0 16px; }
 
-    a{ color:inherit; }
-    h1,h2,h3{ margin:0; font-weight:800; letter-spacing:.02em; }
-    p{ margin:0; }
-
-    /* ===== header ===== */
+    /* header */
     header{
-      position: sticky;
-      top:0;
-      z-index:50;
-      background: rgba(10,15,28,.72);
+      position:sticky; top:0; z-index:30;
       backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(148,163,184,.14);
+      background: rgba(5,10,20,.60);
+      border-bottom:1px solid var(--line);
     }
-    .header-inner{
-      max-width: 1040px;
-      margin: 0 auto;
-      padding: 12px 16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+    .h-inner{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:12px 0;
     }
-    .logo{
-      display:flex; align-items:center; gap:10px;
-      min-width:0;
+    .brand{
+      display:flex; align-items:center; gap:10px; min-width:0;
     }
-    .logo-mark{
-      width:34px; height:34px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(167,139,250,.95));
-      display:flex; align-items:center; justify-content:center;
-      box-shadow: 0 10px 22px rgba(124,58,237,.25);
-      flex:0 0 auto;
+    .mark{
+      width:36px; height:36px; border-radius:14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display:grid; place-items:center;
       font-weight:900;
-    }
-    .logo-text-wrap{ min-width:0; }
-    .logo-text-main{
-      font-size:15px;
-      white-space:nowrap;
-      line-height:1.1;
-    }
-    .logo-text-sub{
-      margin-left:8px;
-      font-size:11px;
-      color:rgba(229,231,235,.78);
-      border: 1px solid rgba(167,139,250,.35);
-      background: rgba(124,58,237,.10);
-      padding:2px 8px;
-      border-radius:999px;
-      white-space:nowrap;
-      display:inline-flex;
-      align-items:center;
-    }
-    @media(max-width:420px){
-      .logo-text-sub{ display:none; }
-    }
-
-    .header-cta{
-      padding: 10px 14px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff;
-      font-size: 13px;
-      font-weight: 900;
-      cursor: pointer;
-      text-decoration:none;
-      box-shadow: 0 10px 24px rgba(124,58,237,.35);
-      white-space: nowrap;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      line-height:1;
+      box-shadow: 0 10px 26px rgba(124,58,237,.35);
       flex:0 0 auto;
     }
-    .header-cta:hover{ filter: brightness(1.05); }
-
-    /* ===== layout ===== */
-    .wrap{
-      max-width:1040px;
-      margin:0 auto;
-      padding: 26px 16px 64px;
+    .b-text{ min-width:0; }
+    .b-title{ font-weight:900; letter-spacing:.03em; line-height:1.1; }
+    .b-sub{
+      margin-top:2px;
+      font-size:12px; color:var(--muted2);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width: 48vw;
+    }
+    .cta{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+      padding:11px 14px;
+      border-radius:999px;
+      background: var(--accent);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 16px 40px rgba(124,58,237,.35);
+      font-weight:800;
+      font-size:13px;
+      white-space:nowrap;
+    }
+    .cta:hover{ filter:brightness(1.05); }
+    .cta.secondary{
+      background: rgba(255,255,255,.06);
+      box-shadow:none;
+      border:1px solid var(--line);
+      color: var(--ink);
+      font-weight:700;
     }
 
-    /* ===== hero ===== */
+    /* hero */
     .hero{
+      padding:26px 0 48px;
       display:grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
-      gap: 28px;
-      align-items: center;
-      padding-top: 10px;
+      grid-template-columns: minmax(0,1.05fr) minmax(0,1fr);
+      gap:22px;
+      align-items:stretch;
     }
-    @media(max-width:860px){
-      .hero{ grid-template-columns: minmax(0,1fr); }
+    @media (max-width: 900px){
+      .hero{ grid-template-columns: minmax(0,1fr); padding-top:18px; }
     }
+    .left{
+      padding:14px 0;
+    }
+    .eyebrow{
+      display:inline-flex; align-items:center; gap:8px;
+      font-size:12px; color: var(--warn);
+      background: rgba(253,230,138,.08);
+      border:1px solid rgba(253,230,138,.20);
+      padding:6px 10px;
+      border-radius:999px;
+      margin-bottom:12px;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size:34px; line-height:1.2;
+      letter-spacing:.02em;
+    }
+    @media (max-width:520px){
+      h1{ font-size:28px; }
+    }
+    .lead{
+      color: var(--muted2);
+      font-size:14px;
+      line-height:1.9;
+      margin:0 0 16px;
+      max-width: 42em;
+    }
+    .cta-row{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      margin: 10px 0 10px;
+    }
+    .note{
+      font-size:12px; color: rgba(229,231,235,.70);
+      line-height:1.7;
+      margin-top: 8px;
+    }
+    .note small{ color: rgba(229,231,235,.55); }
 
-    .hero-title{
-      font-size: 28px;
-      line-height: 1.35;
-      margin-bottom: 8px;
-    }
-    .hero-tagline{
-      font-size: 28px;
-      line-height: 1.35;
-      font-weight: 900;
-      margin-bottom: 12px;
-      background: linear-gradient(120deg, #e9d5ff, #a78bfa, #60a5fa);
-      -webkit-background-clip:text;
-      color: transparent;
-    }
-
-    .hero-sub{
-      color: rgba(229,231,235,.78);
-      margin-bottom: 16px;
-      font-size: 14px;
-      line-height: 1.85;
-    }
-
-    /* ===== baya row ===== */
-    .bayaRow{
-      display:flex;
-      gap:12px;
-      align-items:flex-start;
-      margin: 10px 0 14px;
-    }
-    .bayaImg{
-      width: 96px;
-      height:auto;
-      flex: 0 0 auto;
-      filter: drop-shadow(0 14px 28px rgba(0,0,0,.35));
-      border-radius: 18px;
-    }
-    .bubble{
-      position: relative;
-      padding: 12px 14px;
-      border-radius: 14px;
-      line-height: 1.6;
-      background: rgba(17,24,39,.65);
-      border: 1px solid rgba(167,139,250,.30);
+    /* chat mock */
+    .mock{
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius: var(--radius2);
       box-shadow: var(--shadow);
-      color: rgba(229,231,235,.92);
-      font-weight: 700;
+      overflow:hidden;
     }
-    .bubble:before{
-      content:"";
-      position:absolute;
-      left:-10px;
-      top:18px;
-      border-width:10px 10px 10px 0;
-      border-style:solid;
-      border-color:transparent rgba(167,139,250,.30) transparent transparent;
-    }
-    .bubble:after{
-      content:"";
-      position:absolute;
-      left:-9px;
-      top:18px;
-      border-width:10px 10px 10px 0;
-      border-style:solid;
-      border-color:transparent rgba(17,24,39,.65) transparent transparent;
-    }
-
-    .hero-cta-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap: 10px;
-      align-items:center;
-      margin-bottom: 8px;
-    }
-    .hero-cta-main{
-      padding: 12px 22px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color:#fff;
-      font-size: 14px;
-      font-weight: 900;
-      cursor:pointer;
-      box-shadow: 0 14px 30px rgba(124,58,237,.42);
-    }
-    .hero-cta-main:hover{ filter: brightness(1.05); }
-
-    .hero-cta-sub{
-      font-size: 12px;
+    .mock-head{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:12px 12px;
+      background: rgba(255,255,255,.04);
+      border-bottom:1px solid var(--line);
+      font-size:12px;
       color: rgba(229,231,235,.75);
     }
-    .hero-cta-link{
-      color: #c4b5fd;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      cursor:pointer;
-      font-weight: 800;
-    }
-    .hero-note{
-      margin-top: 10px;
-      font-size: 11px;
-      color: rgba(229,231,235,.60);
-    }
-
-    /* ===== right card ===== */
-    .hero-card{
-      position: relative;
-      background: rgba(15,23,42,.80);
-      border: 1px solid rgba(148,163,184,.16);
-      border-radius: 22px;
-      padding: 16px 14px;
-      box-shadow: var(--shadow);
+    .who{ display:flex; align-items:center; gap:10px; }
+    .avatar{
+      width:28px; height:28px; border-radius:999px;
+      background: rgba(255,255,255,.10);
       overflow:hidden;
-      max-width: 420px;
-      margin-left:auto;
+      flex:0 0 auto;
+      display:grid; place-items:center;
+      border:1px solid rgba(255,255,255,.10);
     }
-    @media(max-width:860px){
-      .hero-card{ margin: 8px auto 0; }
+    .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .fallback{
+      font-weight:900;
+      color: rgba(229,231,235,.85);
+      font-size:13px;
     }
-    .hero-card:before{
-      content:"";
-      position:absolute;
-      inset:-80px -120px auto auto;
-      width:260px; height:260px;
-      background: radial-gradient(circle, rgba(124,58,237,.35), transparent 70%);
-      transform: rotate(15deg);
-      pointer-events:none;
-    }
-
-    .mini-labels{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-bottom: 12px;
-    }
-    .pill{
-      font-size: 11px;
-      font-weight: 800;
-      color: rgba(229,231,235,.88);
-      border: 1px solid rgba(167,139,250,.26);
-      background: rgba(124,58,237,.12);
-      padding: 5px 10px;
-      border-radius: 999px;
-    }
-    .pill.good{ border-color: rgba(52,211,153,.30); background: rgba(52,211,153,.10); }
-    .pill.warn{ border-color: rgba(251,191,36,.30); background: rgba(251,191,36,.10); }
-
-    .mock{
-      background: rgba(2,6,23,.55);
-      border: 1px solid rgba(148,163,184,.14);
-      border-radius: 18px;
-      padding: 10px 10px 8px;
-    }
-    .mock-top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      margin-bottom: 8px;
-      color: rgba(229,231,235,.65);
-      font-size: 11px;
-    }
-    .mock-id{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-    }
-    .mock-avatar{
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      overflow:hidden;
-      background: rgba(167,139,250,.20);
-      border:1px solid rgba(167,139,250,.35);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex: 0 0 auto;
-    }
-    .mock-avatar img{
-      width:100%; height:100%;
-      object-fit: cover;
-      display:block;
-    }
-    .mock-name{ font-weight:800; }
-
     .mock-body{
-      background: rgba(15,23,42,.55);
-      border-radius: 16px;
-      padding: 8px;
+      padding:14px 12px 12px;
+      min-height: 360px;
+      background:
+        radial-gradient(500px 300px at 30% 0%, rgba(124,58,237,.18), transparent 60%),
+        rgba(0,0,0,.10);
     }
-    .row{
-      display:flex;
-      margin: 6px 0;
-    }
+    .row{ display:flex; gap:10px; margin: 10px 0; }
     .row.user{ justify-content:flex-end; }
-    .bub{
+    .bubble{
       max-width: 78%;
-      padding: 8px 10px;
-      border-radius: 14px;
-      font-size: 12px;
-      line-height: 1.55;
+      padding: 10px 12px;
+      border-radius: 16px;
+      line-height:1.6;
+      font-size:13px;
+      border:1px solid rgba(255,255,255,.10);
       white-space: pre-line;
     }
-    .row.assistant .bub{
-      background: rgba(229,231,235,.08);
-      border:1px solid rgba(148,163,184,.14);
+    .bubble.bot{
+      background: var(--bot);
       border-bottom-left-radius: 6px;
-      color: rgba(229,231,235,.92);
     }
-    .row.user .bub{
-      background: rgba(124,58,237,.92);
-      border:1px solid rgba(167,139,250,.25);
+    .bubble.user{
+      background: rgba(34,197,94,.95);
+      color:#06120a;
+      border-color: rgba(0,0,0,.10);
       border-bottom-right-radius: 6px;
-      color: #fff;
+      font-weight:800;
     }
-
-    .mock-footer{
-      display:flex;
-      gap: 8px;
-      align-items:center;
-      margin-top: 10px;
+    .mock-foot{
+      display:flex; gap:8px; align-items:center;
+      padding:12px;
+      border-top:1px solid var(--line);
+      background: rgba(255,255,255,.04);
     }
-    .mock-input{
+    .fake-input{
       flex:1;
-      padding: 8px 10px;
+      padding:10px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(148,163,184,.18);
-      background: rgba(2,6,23,.35);
-      color: rgba(229,231,235,.65);
-      font-size: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: rgba(229,231,235,.70);
+      font-size:12px;
     }
-    .mock-btn{
-      padding: 8px 12px;
+    .start{
+      padding:10px 12px;
       border-radius: 999px;
-      border:none;
-      background: rgba(229,231,235,.12);
-      color: rgba(229,231,235,.92);
+      background: var(--accent);
+      border:1px solid rgba(255,255,255,.10);
       font-weight:900;
+      font-size:12px;
       cursor:pointer;
+      white-space:nowrap;
     }
+    .start:hover{ filter:brightness(1.05); }
 
-    /* ===== sections ===== */
+    /* sections */
     .section{
-      margin-top: 44px;
-      padding-top: 44px;
-      border-top: 1px solid rgba(148,163,184,.12);
+      padding: 26px 0 50px;
+      border-top:1px solid rgba(255,255,255,.06);
     }
-
-    .eyebrow{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(167,139,250,.25);
-      background: rgba(124,58,237,.10);
-      color: rgba(229,231,235,.88);
-      font-size: 11px;
-      font-weight: 900;
-      margin-bottom: 10px;
-    }
-
-    .section-title{
-      font-size: 22px;
-      line-height: 1.5;
-      margin-bottom: 10px;
-    }
-    .section-lead{
-      color: rgba(229,231,235,.75);
-      margin-bottom: 18px;
-    }
-
     .grid2{
       display:grid;
       grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-      gap: 18px;
+      gap:16px;
     }
-    @media(max-width:860px){
-      .grid2{ grid-template-columns: minmax(0,1fr); }
+    @media (max-width: 900px){
+      .grid2{ grid-template-columns:minmax(0,1fr); }
     }
-
     .card{
-      background: rgba(15,23,42,.72);
-      border: 1px solid rgba(148,163,184,.14);
+      background: var(--panel2);
+      border:1px solid var(--line);
       border-radius: var(--radius);
-      padding: 14px 14px 12px;
-      box-shadow: 0 10px 28px rgba(0,0,0,.20);
+      padding:14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.25);
     }
-    .card-title{
-      font-weight: 900;
-      margin-bottom: 6px;
-      font-size: 13px;
+    .card h2{
+      margin:0 0 10px;
+      font-size:18px;
+      letter-spacing:.02em;
     }
-    .card-body{
-      color: rgba(229,231,235,.75);
-      font-size: 13px;
-      line-height: 1.75;
+    .muted{ color: rgba(229,231,235,.72); font-size:13px; line-height:1.8; }
+    .pill{
+      display:inline-flex; align-items:center;
+      font-size:12px;
+      color: rgba(229,231,235,.80);
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      padding:6px 10px;
+      border-radius:999px;
+      margin-bottom:10px;
     }
-    .list{
-      padding-left: 18px;
-      margin: 10px 0 0;
-      color: rgba(229,231,235,.78);
-      font-size: 13px;
+    .out-grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:12px;
     }
-    .list li{ margin: 6px 0; }
-
-    .strongBox{
-      margin-top: 14px;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(167,139,250,.25);
-      background: rgba(124,58,237,.08);
-      color: rgba(229,231,235,.90);
-      font-weight: 800;
+    @media (max-width: 900px){
+      .out-grid{ grid-template-columns:minmax(0,1fr); }
     }
-
-    /* ===== pricing ===== */
-    .pricing{
+    .out{
+      border-radius: 16px;
+      padding:12px;
+      background: rgba(0,0,0,.20);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .out .k{
+      font-weight:900;
+      letter-spacing:.06em;
+      font-size:12px;
+      color: rgba(253,230,138,.90);
+      margin-bottom:6px;
+    }
+    .out .v{
+      font-size:13px;
+      line-height:1.75;
+      color: rgba(229,231,235,.85);
+    }
+    .steps{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:12px;
+    }
+    @media (max-width: 900px){
+      .steps{ grid-template-columns:minmax(0,1fr); }
+    }
+    .step{
+      padding:14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .step .n{
+      width:28px; height:28px;
+      border-radius:10px;
+      display:grid; place-items:center;
+      background: rgba(124,58,237,.35);
+      border:1px solid rgba(167,139,250,.25);
+      font-weight:900;
+      margin-bottom:10px;
+    }
+    .faq{
       display:grid;
       grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-      gap: 16px;
-      margin-top: 16px;
+      gap:12px;
     }
-    @media(max-width:860px){
-      .pricing{ grid-template-columns: minmax(0,1fr); }
+    @media (max-width: 900px){
+      .faq{ grid-template-columns:minmax(0,1fr); }
     }
-    .priceCard{
-      background: rgba(15,23,42,.78);
-      border: 1px solid rgba(148,163,184,.16);
-      border-radius: 20px;
-      padding: 16px 14px 14px;
-      box-shadow: var(--shadow);
-    }
-    .priceTag{
-      font-size: 12px;
-      font-weight: 900;
-      color: rgba(229,231,235,.75);
-    }
-    .price{
-      margin-top: 6px;
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: .02em;
-      background: linear-gradient(120deg, #e9d5ff, #a78bfa);
-      -webkit-background-clip:text;
-      color: transparent;
-    }
-    .priceTitle{
-      margin-top: 6px;
-      font-size: 14px;
-      font-weight: 900;
-    }
-    .priceDesc{
-      margin-top: 6px;
-      color: rgba(229,231,235,.75);
-      font-size: 13px;
-      line-height: 1.75;
-    }
-    .priceBtn{
-      margin-top: 12px;
-      width: 100%;
-      padding: 12px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(167,139,250,.30);
-      background: rgba(124,58,237,.18);
-      color:#fff;
-      font-weight: 900;
-      cursor:pointer;
-    }
-    .priceBtn:hover{ filter: brightness(1.05); }
-
-    /* ===== faq ===== */
     details{
-      background: rgba(15,23,42,.68);
-      border:1px solid rgba(148,163,184,.14);
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
       border-radius: 16px;
-      padding: 12px 12px;
-      margin: 10px 0;
+      padding:12px 12px;
     }
     summary{
       cursor:pointer;
-      font-weight: 900;
-      color: rgba(229,231,235,.92);
+      font-weight:900;
+      color: rgba(229,231,235,.88);
     }
     details p{
-      margin-top: 8px;
-      color: rgba(229,231,235,.75);
+      margin:10px 0 0;
+      color: rgba(229,231,235,.72);
+      font-size:13px;
+      line-height:1.8;
     }
 
-    /* ===== footer ===== */
     footer{
-      margin-top: 42px;
-      padding-top: 28px;
-      border-top: 1px solid rgba(148,163,184,.12);
-      color: rgba(229,231,235,.60);
-      font-size: 12px;
+      padding: 26px 0 40px;
+      color: rgba(229,231,235,.55);
+      font-size:12px;
+      border-top:1px solid rgba(255,255,255,.06);
     }
-    .footRow{
-      display:flex;
-      flex-wrap:wrap;
-      gap: 12px;
-      align-items:center;
-      justify-content:space-between;
+    .footer-row{
+      display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
     }
-    .footLinks a{
-      color: rgba(229,231,235,.75);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      margin-right: 10px;
+    .mini-cta{
+      display:inline-flex; gap:10px; flex-wrap:wrap;
     }
   </style>
-
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PMRW6LK7YG"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
-    gtag('js', new Date());
-    gtag('config', 'G-PMRW6LK7YG', { send_page_view: true });
-  </script>
-
-  <script>
-    function safeScrollTo(id){
-      try{
-        var el = document.getElementById(id);
-        if(!el) return;
-        if(typeof el.scrollIntoView === 'function'){
-          el.scrollIntoView({behavior:'smooth'});
-        }else{
-          window.location.hash = '#' + id;
-        }
-      }catch(e){}
-    }
-    function track(eventName, params){
-      try{
-        if(typeof window.gtag === 'function'){
-          window.gtag('event', eventName, params || {});
-        }
-      }catch(e){}
-    }
-  </script>
 </head>
-
 <body>
+
 <header>
-  <div class="header-inner">
-    <div class="logo">
-      <div class="logo-mark">占</div>
-      <div class="logo-text-wrap">
-        <div class="logo-text-main">
-          占いばあやの鑑定
-          <span class="logo-text-sub">相性 × 今の一手</span>
+  <div class="wrap">
+    <div class="h-inner">
+      <div class="brand">
+        <div class="mark">占</div>
+        <div class="b-text">
+          <div class="b-title">占いばあやの鑑定</div>
+          <div class="b-sub">相性、結論と一手だけ。まずは無料で。</div>
         </div>
       </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a class="cta secondary" href="#example">出力例を見る</a>
+        <a class="cta" href="chat.html">無料で鑑定をはじめる</a>
+      </div>
     </div>
-
-    <a class="header-cta" href="chat.html" onclick="track('click_start_free',{location:'header'});">
-      無料で鑑定する
-    </a>
   </div>
 </header>
 
-<div class="wrap">
+<main class="wrap">
 
   <section class="hero">
-    <!-- left -->
-    <div>
-      <h1 class="hero-title">生年月日と状況から、</h1>
-      <div class="hero-tagline">相性と「今の一手」を静かに整える。</div>
-
-      <div class="bayaRow">
-        <!-- 画像は assets/baya_320.webp を想定。無ければ public/baya.png にしてもOK -->
-        <img class="bayaImg" src="./assets/baya_320.webp" alt="占いばあや" onerror="this.style.display='none'">
-        <div class="bubble">
-          焦らなくて大丈夫でございます。<br>
-          事実と気持ちを分けて、いま一番効く一手だけお渡ししますね。
-        </div>
-      </div>
-
-      <p class="hero-sub">
-        占いが好きでも、「結局どうすればいいか」が残ること、ありますよね。<br>
-        占いばあやは、<b>相性</b>と<b>状況</b>をもとに、あなたの迷いをほどき、<b>今日から動ける一手</b>へ落とします。
+    <div class="left">
+      <div class="eyebrow">3分で「結論」と「一手」だけ、お渡しします</div>
+      <h1>相性、見ます。<br>迷いを減らす “次の一手” まで。</h1>
+      <p class="lead">
+        生年月日と関係性を入力するだけ。<br>
+        当てものではなく、<strong>状況整理 → 判断の補助 → 行動の提案</strong>に寄せた鑑定です。<br>
+        まずは無料で、短く確実に。
       </p>
 
-      <div class="hero-cta-row" id="start">
-        <button class="hero-cta-main"
-          onclick="track('click_start_free',{location:'hero'}); window.location.href='chat.html';">
-          無料で鑑定をはじめる
-        </button>
-        <span class="hero-cta-sub">
-          まずは <span class="hero-cta-link" onclick="safeScrollTo('about')">内容を見る</span>
-        </span>
+      <div class="cta-row">
+        <a class="cta" href="chat.html">無料で鑑定をはじめる</a>
+        <a class="cta secondary" href="#how">使い方を見る</a>
       </div>
-
-      <p class="hero-note">
-        ※ 入力内容は鑑定のために使用します。／医療・法律等の専門判断を代替するものではありません。
-      </p>
+      <div class="note">
+        <small>※ 実在の人物とは無関係です。／結果は判断材料の整理を目的とするコンテンツです。</small>
+      </div>
     </div>
 
-    <!-- right -->
-    <div>
-      <div class="hero-card">
-        <div class="mini-labels">
-          <div class="pill good">無料：相性の核＋今日の一手</div>
-          <div class="pill warn">有料：深掘り＋時期＋行動設計</div>
-        </div>
-
-        <div class="mock">
-          <div class="mock-top">
-            <div class="mock-id">
-              <div class="mock-avatar">
-                <img src="./assets/baya_320.webp" alt="占いばあや" onerror="this.innerHTML='ば'">
-              </div>
-              <div>
-                <div class="mock-name">占いばあや</div>
-                <div style="font-size:10px;opacity:.8;">オンライン</div>
-              </div>
-            </div>
-            <div style="font-size:10px;opacity:.8;">相性鑑定</div>
+    <div class="mock" aria-label="擬似チャットプレビュー">
+      <div class="mock-head">
+        <div class="who">
+          <div class="avatar" id="botAvatar">
+            <img src="/baya.png" alt="占いばあや" onerror="this.remove();document.getElementById('botAvatar').innerHTML='<div class=&quot;fallback&quot;>ば</div>';">
           </div>
-
-          <div class="mock-body">
-            <div class="row user">
-              <div class="bub">返信が遅くて不安です。<br>脈なしですか…？</div>
-            </div>
-            <div class="row assistant">
-              <div class="bub">
-                まず「不安」と「事実」を分けましょう。<br>
-                事実：返信が遅い。<br>
-                ここから取れる可能性を3つに絞り、あなたの一手に落としますね。
-              </div>
-            </div>
-            <div class="row assistant">
-              <div class="bub">
-                今日の一手：<br>
-                ①追撃はせず、質問は1つに絞る<br>
-                ②送るなら“軽い肯定＋短文”<br>
-                ③期限を決めて待つ（自分を守る）
-              </div>
-            </div>
-          </div>
-
-          <div class="mock-footer">
-            <div class="mock-input">例）相手の生年月日と関係性を入力</div>
-            <button class="mock-btn" onclick="window.location.href='chat.html'">開始</button>
+          <div>
+            <div style="font-weight:900;color:rgba(229,231,235,.9);font-size:12px;">占いばあや</div>
+            <div style="font-size:11px;color:rgba(229,231,235,.55);">オンライン</div>
           </div>
         </div>
+        <div style="font-size:11px;color:rgba(229,231,235,.55);">相性鑑定</div>
+      </div>
+
+      <div class="mock-body" id="mockBody">
+        <div class="row user">
+          <div class="bubble user">既読はつくのに、返事が来ません…</div>
+        </div>
+
+        <div class="row">
+          <div class="bubble bot">承知いたしました。まずは状況を整理いたしましょう。</div>
+        </div>
+
+        <div class="row">
+          <div class="bubble bot">生年月日と関係性を伺えれば、結論と一手をお出しします。</div>
+        </div>
+
+        <div class="row user">
+          <div class="bubble user">相手は20代後半、片想いです。</div>
+        </div>
+
+        <div class="row">
+          <div class="bubble bot">では、今の論点は二つ。<br>①相手の温度感 ②あなたの不安の増幅です。</div>
+        </div>
+
+        <div class="row">
+          <div class="bubble bot">鑑定の最後に「一手」を一つに絞ってお渡しします。</div>
+        </div>
+      </div>
+
+      <div class="mock-foot">
+        <div class="fake-input">例）あなたと相手の生年月日を入力</div>
+        <button class="start" onclick="location.href='chat.html'">鑑定する</button>
       </div>
     </div>
   </section>
 
-  <!-- Problem -->
-  <section id="problem" class="section">
-    <div class="eyebrow">こんなお悩み、ありませんか？</div>
-    <h2 class="section-title">占いで当たっても、心が落ち着かない。</h2>
-    <p class="section-lead">
-      それはあなたが弱いからではなく、情報が「行動」に変換されていないだけです。<br>
-      ばあやは、納得感と現実的な一手をセットでお渡しします。
-    </p>
+  <section id="example" class="section">
+    <div class="card">
+      <div class="pill">出力例（無料版のイメージ）</div>
+      <h2>「吉 / 凶 / 一手」で、結論を迷わせません</h2>
+      <p class="muted">長文の説教ではなく、判断材料を短く整理してお渡しします。</p>
 
+      <div class="out-grid" style="margin-top:12px;">
+        <div class="out">
+          <div class="k">吉</div>
+          <div class="v">相手は“返信が遅い＝関心がない”とは限らないタイプ。焦って追うほど、距離が開きやすい。</div>
+        </div>
+        <div class="out">
+          <div class="k">凶</div>
+          <div class="v">不安が強いときほど、確認メッセージを重ねやすい。ここで追撃すると逆効果になりやすい。</div>
+        </div>
+        <div class="out">
+          <div class="k">一手</div>
+          <div class="v"><strong>「用件1つ＋期限なし」</strong>で1通だけ送る。返信を待つ間は“次の予定”を先に確保して気持ちを安定させる。</div>
+        </div>
+      </div>
+
+      <div class="cta-row" style="margin-top:16px;">
+        <a class="cta" href="chat.html">無料で鑑定をはじめる</a>
+        <a class="cta secondary" href="#faq">不安点を先に確認する</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="section">
     <div class="grid2">
       <div class="card">
-        <div class="card-title">よくある状態</div>
-        <div class="card-body">
-          <ul class="list">
-            <li>相性は良いと言われたのに、連絡が来ない</li>
-            <li>「待て」と言われても、何をどう待てばいいか分からない</li>
-            <li>不安な時に限って、余計な一言を送ってしまう</li>
-            <li>占い結果の解釈が増えて、逆に迷う</li>
-          </ul>
+        <div class="pill">使い方</div>
+        <h2>3ステップで完了します</h2>
+        <div class="steps" style="margin-top:12px;">
+          <div class="step">
+            <div class="n">1</div>
+            <div style="font-weight:900;margin-bottom:6px;">入力</div>
+            <div class="muted">あなたと相手の生年月日、関係性、直近の出来事を入力。</div>
+          </div>
+          <div class="step">
+            <div class="n">2</div>
+            <div style="font-weight:900;margin-bottom:6px;">整理</div>
+            <div class="muted">状況を「事実」「感情」「解釈」に分けて整えます。</div>
+          </div>
+          <div class="step">
+            <div class="n">3</div>
+            <div style="font-weight:900;margin-bottom:6px;">一手</div>
+            <div class="muted">最後に“今やること”を一つに絞って渡します。</div>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">ばあやがやること</div>
-        <div class="card-body">
-          <ul class="list">
-            <li>事実／解釈／感情を分けて「迷いの正体」を明確化</li>
-            <li>相性の“核”と、衝突しやすい論点を整理</li>
-            <li>今日〜今週の「一手」に落とす（やる／やらないも明示）</li>
-            <li>必要なら、有料で時期と行動設計まで深掘り</li>
-          </ul>
-        </div>
-
-        <div class="strongBox">
-          大事なのは「当たる」だけでなく、<br>
-          あなたが“崩れない”打ち手を持つことです。
+        <div class="pill">このLPの狙い</div>
+        <h2>占いを“行動に落とす”設計</h2>
+        <p class="muted">
+          「当たる/当たらない」より、迷いを減らして動けるか。<br>
+          その一点に寄せた構成です。<br><br>
+          ※ 今のあなたのUI（LINE風チャット）と最も相性が良いLPです。
+        </p>
+        <div class="cta-row" style="margin-top:10px;">
+          <a class="cta" href="chat.html">無料で鑑定をはじめる</a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- About -->
-  <section id="about" class="section">
-    <div class="eyebrow">サービスの中身</div>
-    <h2 class="section-title">入力 → 整理 → 一手。ここまでを最短で。</h2>
-    <p class="section-lead">
-      チャット形式で、必要な情報だけ順番に伺います。<br>
-      生年月日（必須）＋ 任意項目（出生時刻など）で精度を上げられます。
-    </p>
-
-    <div class="grid2">
-      <div class="card">
-        <div class="card-title">無料で受け取れるもの</div>
-        <div class="card-body">
-          <ul class="list">
-            <li>相性の核（噛み合う点／ズレる点）</li>
-            <li>状況の整理（事実／解釈／感情）</li>
-            <li>今日の一手（短く、具体）</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">有料で深掘りできるもの</div>
-        <div class="card-body">
-          <ul class="list">
-            <li>相手側の深掘り（反応が出る条件・地雷）</li>
-            <li>時期の波（今動く／待つの判断）</li>
-            <li>メッセージ案／会う時の空気づくり</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Pricing -->
-  <section id="pricing" class="section">
-    <div class="eyebrow">料金</div>
-    <h2 class="section-title">まずは無料。必要なら、深い鑑定へ。</h2>
-    <p class="section-lead">
-      無料で「核」と「一手」を確認してから、深掘りに進めます。
-    </p>
-
-    <div class="pricing">
-      <div class="priceCard">
-        <div class="priceTag">ライト深掘り</div>
-        <div class="price">¥480</div>
-        <div class="priceTitle">一手確定版</div>
-        <div class="priceDesc">
-          迷いが出やすい論点を絞って、<b>今週の打ち手</b>を確定します。<br>
-          「送るなら何を」「待つならどこまで」を明確に。
-        </div>
-        <button class="priceBtn" onclick="track('click_start_free',{location:'pricing_480'}); window.location.href='chat.html';">
-          無料鑑定からはじめる
-        </button>
-      </div>
-
-      <div class="priceCard">
-        <div class="priceTag">フル深掘り</div>
-        <div class="price">¥980</div>
-        <div class="priceTitle">行動設計版</div>
-        <div class="priceDesc">
-          相手の性質・時期の波・言い回しまで含めて、<b>勝ち筋の行動設計</b>を作ります。<br>
-          長期で崩れない“型”が欲しい方向け。
-        </div>
-        <button class="priceBtn" onclick="track('click_start_free',{location:'pricing_980'}); window.location.href='chat.html';">
-          無料鑑定からはじめる
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- FAQ -->
   <section id="faq" class="section">
-    <div class="eyebrow">よくある質問</div>
-    <h2 class="section-title">不安は先に潰しておきましょう。</h2>
+    <div class="card">
+      <div class="pill">FAQ</div>
+      <h2>不安を先に潰します</h2>
+      <div class="faq" style="margin-top:12px;">
+        <details>
+          <summary>入力した内容は保存されますか？</summary>
+          <p>現状の実装方針に合わせて記載してください。ローカル保存（端末内）なら「サーバには保存しません」、保存するなら「保存範囲と目的」を明記すると信頼が上がります。</p>
+        </details>
+        <details>
+          <summary>無料と有料は何が違いますか？</summary>
+          <p>無料＝結論と一手。／有料＝深掘り（時系列・相手視点・NG行動・具体文面など）という“差”を、抽象ではなく項目で書くのが効きます。</p>
+        </details>
+        <details>
+          <summary>キャラクター鑑定って、信じにくくないですか？</summary>
+          <p>キャラは“案内役”で、価値は「状況整理→判断補助→一手」にあります。この説明をFAQに置くと胡散臭さが下がります。</p>
+        </details>
+        <details>
+          <summary>どれくらい時間がかかりますか？</summary>
+          <p>数分で完了。重い生成は段階メッセージを出す設計にしているため、待ち時間も不安になりにくいです。</p>
+        </details>
+      </div>
 
-    <details>
-      <summary>キャラクターだと信じにくくないですか？</summary>
-      <p>
-        入口を柔らかくするためにキャラクターで案内していますが、文章の中身は
-        「状況整理→相性→打ち手」の順で一貫して出します。<br>
-        “当たる・当たらない”よりも、あなたが崩れない一手を重視しています。
-      </p>
-    </details>
-
-    <details>
-      <summary>出生時刻や都道府県が分からなくても大丈夫？</summary>
-      <p>
-        はい。生年月日が必須で、それ以外は任意です。分からない項目は“不明”で進められます。
-      </p>
-    </details>
-
-    <details>
-      <summary>無料だけでも使えますか？</summary>
-      <p>
-        無料では「相性の核＋今日の一手」までお渡しします。深掘りが必要な場合だけ有料をご検討ください。
-      </p>
-    </details>
-  </section>
-
-  <footer>
-    <div class="footRow">
-      <div>© 占いばあや</div>
-      <div class="footLinks">
-        <a href="chat.html" onclick="track('click_start_free',{location:'footer'});">無料で鑑定する</a>
-        <a href="#" onclick="safeScrollTo('faq'); return false;">FAQ</a>
+      <div class="cta-row" style="margin-top:14px;">
+        <a class="cta" href="chat.html">無料で鑑定をはじめる</a>
       </div>
     </div>
-  </footer>
+  </section>
 
-</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-row">
+      <div>© 占いばあや</div>
+      <div class="mini-cta">
+        <a class="cta secondary" href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">上に戻る</a>
+        <a class="cta" href="chat.html">無料で鑑定</a>
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      ※ 実在の人物とは無関係です。／鑑定結果は意思決定を補助するコンテンツです。
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>
