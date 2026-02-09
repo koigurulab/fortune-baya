@@ -51,7 +51,7 @@ let intake = loadIntake();
 let state = STATES.ASK_USER_BDAY;
 
 const chatEl = document.getElementById("chat");
-const inputEl = document.getElementById("input");
+const inputEl = document.getElementById("input");     // textarea想定
 const sendBtn = document.getElementById("sendBtn");
 const resetBtn = document.getElementById("reset");
 
@@ -66,11 +66,11 @@ sendBtn.addEventListener("click", async () => {
 });
 
 inputEl.addEventListener("keydown", (e) => {
-  // Enterで送信させない。改行は許可（デフォルト動作）
-  // もし「Enterは改行もさせない」ならここで e.preventDefault() してください。
+  // Enterで送信させない。textareaなら改行はデフォルトで入る
+  // ※もし input type="text" の場合は、Enterでフォームsubmitされることがあるので、
+  //   HTML側を textarea にしておくのが安全です。
   if (e.key === "Enter") {
-    // 送信はしない
-    // 何もしない（textareaなので普通に改行が入る）
+    // 送信はしない（何もしない）
   }
 });
 
@@ -118,7 +118,7 @@ function questionFor(s){
     case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ“不明”で結構です。";
 
     case STATES.ASK_RELATION: return "いまの関係性を、ひとことでお教えください。（片想い中／交際中／曖昧な関係／復縁したなど、自由で結構です）";
-    case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。。（例：3日前に既読のまま／先週会った など）";
+    case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。（例：3日前に既読のまま／先週会った など）";
     case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを伺います。何に悩んでおられて、どうなりたいですか？長くて構いません。迷ったら、①直近の事実②不安③理想 の順にお書きくださいませ。";
     default: return null;
   }
@@ -323,18 +323,17 @@ function progressLinesFor(mode){
 async function generateWithProgress(mode, intake){
   const lines = progressLinesFor(mode);
 
-  // 3つ“順番に”出す（typing風の点もつける）
+  // 3つ“順番に”出す（2秒ごとに変化）
   const ids = [];
   for(let i=0;i<lines.length;i++){
     const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true, isProgress: true });
     ids.push(id);
-    await sleep(700); // 体感を作る
+    await sleep(2000); // ★ここがポイント：2秒ずつ
   }
 
-  // API呼び出し
   try{
     const out = await generate(mode, intake);
-    // progressメッセージは残しても良いが、見栄え優先で消す
+    // progressメッセージは見栄え優先で消す
     ids.forEach(removeMsgById);
     return out;
   }catch(e){
