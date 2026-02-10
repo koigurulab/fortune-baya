@@ -1,11 +1,52 @@
+// fortune.js (FULL)
+
 const STORAGE_KEY = "fortune_intake_v1_3";
 
-const PAID_LAST_KEY = "fortune_paid_last_v1";
 const FREE_LAST_KEY = "fortune_free_last_v1";
+const PAID_LAST_KEY = "fortune_paid_last_v1";
 
 function nowIso(){ return new Date().toISOString(); }
 
-/** 同一入力判定（必要なら項目追加） */
+/** ====== DOM helper (duplicate id tolerant) ====== */
+function qsAllById(id){
+  try{
+    return Array.from(document.querySelectorAll(`#${CSS.escape(id)}`));
+  }catch{
+    // CSS.escape が無い環境の保険
+    return Array.from(document.querySelectorAll(`#${id}`));
+  }
+}
+function firstById(id){
+  return document.getElementById(id) || null;
+}
+function setVisibleEls(els, visible){
+  els.forEach(el=>{
+    if(!el) return;
+    // class でも消す
+    if(visible) el.classList.remove("is-hidden");
+    else el.classList.add("is-hidden");
+    // CSSが無くても消えるように強制
+    el.hidden = !visible;
+    el.style.display = visible ? "" : "none";
+  });
+}
+function setVisibleById(id, visible){
+  setVisibleEls(qsAllById(id), visible);
+}
+function setEnabledById(id, enabled){
+  qsAllById(id).forEach(el=>{
+    if(!el) return;
+    el.disabled = !enabled;
+  });
+}
+function bindClickAllById(id, handler){
+  qsAllById(id).forEach(el=>{
+    if(!el) return;
+    el.onclick = handler;
+  });
+}
+
+/** ====== Intake signature / storage ====== */
 function intakeSig(it){
   return JSON.stringify({
     v: it?.version,
@@ -15,14 +56,28 @@ function intakeSig(it){
   });
 }
 
-/** out を {format, content} に正規化 */
 function normalizeOut(out){
   if(out?.html) return { format:"html", content: out.html };
   if(out?.text) return { format:"text", content: out.text };
   return { format:"text", content: String(out ?? "") };
 }
 
-/** ===== 保存（有料 / 無料） ===== */
+function saveLastFree({ intake, outNorm }){
+  const payload = {
+    sig: intakeSig(intake),
+    format: outNorm.format,
+    content: outNorm.content,
+    createdAt: nowIso(),
+  };
+  localStorage.setItem(FREE_LAST_KEY, JSON.stringify(payload));
+  return payload;
+}
+function loadLastFree(){
+  const s = localStorage.getItem(FREE_LAST_KEY);
+  if(!s) return null;
+  try{ return JSON.parse(s); }catch{ return null; }
+}
+
 function saveLastPaid({ mode, intake, outNorm }){
   const payload = {
     mode,
@@ -34,32 +89,12 @@ function saveLastPaid({ mode, intake, outNorm }){
   localStorage.setItem(PAID_LAST_KEY, JSON.stringify(payload));
   return payload;
 }
-
 function loadLastPaid(){
   const s = localStorage.getItem(PAID_LAST_KEY);
   if(!s) return null;
   try{ return JSON.parse(s); }catch{ return null; }
 }
 
-function saveLastFree({ intake, outNorm }){
-  const payload = {
-    mode: "free_report",
-    sig: intakeSig(intake),
-    format: outNorm.format,
-    content: outNorm.content,
-    createdAt: nowIso(),
-  };
-  localStorage.setItem(FREE_LAST_KEY, JSON.stringify(payload));
-  return payload;
-}
-
-function loadLastFree(){
-  const s = localStorage.getItem(FREE_LAST_KEY);
-  if(!s) return null;
-  try{ return JSON.parse(s); }catch{ return null; }
-}
-
-/** ===== ユーティリティ ===== */
 function htmlToText(html){
   const doc = new DOMParser().parseFromString(html, "text/html");
   return (doc.body?.innerText || "").trim();
@@ -89,8 +124,7 @@ function printAsPdf({ title, html, text }){
     : `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtml(text || "")}</pre>`;
 
   w.document.open();
-  w.document.write(`
-<!doctype html>
+  w.document.write(`<!doctype html>
 <html><head><meta charset="utf-8" />
 <title>${escapeHtml(title || "占いばあや｜鑑定")}</title>
 <style>
@@ -104,9 +138,63 @@ function printAsPdf({ title, html, text }){
   <div class="meta">生成日時: ${escapeHtml(nowIso())}</div>
   <div>${contentHtml}</div>
   <script>window.onload=()=>{ window.print(); };</script>
-</body></html>
-  `);
+</body></html>`);
   w.document.close();
+}
+
+/** ====== UI show/hide policy (REQUIREMENT) ======
+ *  無料前：freeActions, paidActions(=課金/utility含む) を全部非表示
+ *  無料後：freeActions（無料共有）＋ paidEntry（480/980）だけ表示、paidUtilityは非表示
+ *  有料後：paidUtility（コピー/PDF/再表示/共有）を表示、paidEntryは出しっぱなし
+ */
+function hideAllActionBlocks(){
+  setVisibleById("freeActions", false);
+  // paidActions はHTMLで重複してても全件消す
+  setVisibleById("paidActions", false);
+  // ボタン単位でも念のため消す（CSS欠落対策）
+  setVisibleEls(qsAllById("btnFreeShare"), false);
+  setVisibleEls(qsAllById("btnPaid480"), false);
+  setVisibleEls(qsAllById("btnPaid980"), false);
+  setVisibleEls(qsAllById("btnPaidCopy"), false);
+  setVisibleEls(qsAllById("btnPaidPdf"), false);
+  setVisibleEls(qsAllById("btnPaidShow"), false);
+  setVisibleEls(qsAllById("btnPaidShare"), false);
+  setVisibleById("paidActionsNote", false);
+}
+function showAfterFree(){
+  // 無料共有を表示
+  setVisibleById("freeActions", true);
+  setVisibleEls(qsAllById("btnFreeShare"), true);
+
+  // 有料ボタン（480/980）を表示（コンテナごと出す）
+  setVisibleById("paidActions", true);
+  setVisibleEls(qsAllById("btnPaid480"), true);
+  setVisibleEls(qsAllById("btnPaid980"), true);
+
+  // paid utility はまだ出さない
+  setVisibleEls(qsAllById("btnPaidCopy"), false);
+  setVisibleEls(qsAllById("btnPaidPdf"), false);
+  setVisibleEls(qsAllById("btnPaidShow"), false);
+  setVisibleEls(qsAllById("btnPaidShare"), false);
+
+  // dev_paid 注記は dev_paid=1 の時だけ（後で showPaidNoteIfNeeded が制御）
+}
+function showAfterPaid(){
+  // paidActions は表示継続、480/980も残す
+  setVisibleById("paidActions", true);
+  setVisibleEls(qsAllById("btnPaid480"), true);
+  setVisibleEls(qsAllById("btnPaid980"), true);
+
+  // utility を表示
+  setVisibleEls(qsAllById("btnPaidCopy"), true);
+  setVisibleEls(qsAllById("btnPaidPdf"), true);
+  setVisibleEls(qsAllById("btnPaidShow"), true);
+  setVisibleEls(qsAllById("btnPaidShare"), true);
+}
+
+const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+function showPaidNoteIfNeeded(){
+  setVisibleById("paidActionsNote", DEV_PAID);
 }
 
 /** ====== BOTアイコン（任意）====== */
@@ -118,7 +206,6 @@ const STATES = {
   ASK_USER_BTIME: "ASK_USER_BTIME",
   ASK_USER_PREF: "ASK_USER_PREF",
   ASK_USER_MBTI: "ASK_USER_MBTI",
-  MINI_READ_USER: "MINI_READ_USER",
 
   ASK_PARTNER_BDAY: "ASK_PARTNER_BDAY",
   ASK_PARTNER_GENDER: "ASK_PARTNER_GENDER",
@@ -129,7 +216,6 @@ const STATES = {
 
   ASK_RELATION: "ASK_RELATION",
   ASK_RECENT_EVENT: "ASK_RECENT_EVENT",
-  MINI_READ_PARTNER: "MINI_READ_PARTNER",
 
   ASK_CONCERN_LONG: "ASK_CONCERN_LONG",
   DONE: "DONE",
@@ -156,44 +242,48 @@ function newIntake(){
 let intake = loadIntake();
 let state = STATES.ASK_USER_BDAY;
 
-const chatEl = document.getElementById("chat");
-const inputEl = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const resetBtn = document.getElementById("reset");
+const chatEl = firstById("chat");
+const inputEl = firstById("input");
+const sendBtn = firstById("sendBtn");
+const resetBtn = firstById("reset");
+const choicesEl = firstById("choices");
+const choicesBodyEl = firstById("choicesBody");
 
-const choicesEl = document.getElementById("choices");
-const choicesBodyEl = document.getElementById("choicesBody");
-
-/** ====== Enterで送信しない（クリック送信のみ） ====== */
-sendBtn.addEventListener("click", async () => {
-  const v = inputEl.value.trim();
+/** ====== composer ====== */
+sendBtn?.addEventListener("click", async () => {
+  const v = (inputEl?.value || "").trim();
   if(!v) return;
   await handleAnswer(v);
 });
-
-inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    // 送信しない（textareaなら改行は入る）
+inputEl?.addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    // 送信はしない（改行のみ）。textarea前提
   }
 });
-
-inputEl.addEventListener("input", () => {
+inputEl?.addEventListener("input", () => {
+  if(!inputEl) return;
   inputEl.style.height = "auto";
   inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + "px";
 });
 
-resetBtn.addEventListener("click", ()=>{
+resetBtn?.addEventListener("click", ()=>{
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(FREE_LAST_KEY);
+  localStorage.removeItem(PAID_LAST_KEY);
+
   intake = newIntake();
   state = STATES.ASK_USER_BDAY;
-  chatEl.innerHTML = "";
+
+  if(chatEl) chatEl.innerHTML = "";
   hideChoices();
-  hidePaidActions();
-  hideFreeActions();
+  hideAllActionBlocks(); // ★ここで全ボタンを強制非表示
   boot();
 });
 
+/** ====== boot ====== */
 function boot(){
+  hideAllActionBlocks(); // ★最初から出る事故をここで潰す
+  showPaidNoteIfNeeded(); // note 自体もまずは隠れている（paidActionsが出るまでは見えない）
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
   ask(state);
 }
@@ -229,13 +319,11 @@ function questionFor(s){
 
 /** ====== choices ====== */
 function hideChoices(){
-  if(!choicesEl) return;
-  choicesEl.classList.add("is-hidden");
+  choicesEl?.classList.add("is-hidden");
   if(choicesBodyEl) choicesBodyEl.innerHTML = "";
 }
 function showChoices(){
-  if(!choicesEl) return;
-  choicesEl.classList.remove("is-hidden");
+  choicesEl?.classList.remove("is-hidden");
 }
 function chip(label, value, extraClass=""){
   const btn = document.createElement("button");
@@ -252,8 +340,7 @@ function renderChoicesFor(s){
     return;
   }
 
-  if(!choicesBodyEl) return;
-  choicesBodyEl.innerHTML = "";
+  if(choicesBodyEl) choicesBodyEl.innerHTML = "";
 
   if(s===STATES.ASK_USER_BDAY){
     showChoices();
@@ -271,7 +358,7 @@ function renderChoicesFor(s){
 
     box.appendChild(input);
     box.appendChild(ok);
-    choicesBodyEl.appendChild(box);
+    choicesBodyEl?.appendChild(box);
     return;
   }
 
@@ -291,7 +378,7 @@ function renderChoicesFor(s){
 
     box.appendChild(input);
     box.appendChild(ok);
-    choicesBodyEl.appendChild(box);
+    choicesBodyEl?.appendChild(box);
     return;
   }
 
@@ -302,7 +389,7 @@ function renderChoicesFor(s){
     row.appendChild(chip("女性","女性","primary"));
     row.appendChild(chip("男性","男性","primary"));
     row.appendChild(chip("その他/答えたくない","その他/答えたくない"));
-    choicesBodyEl.appendChild(row);
+    choicesBodyEl?.appendChild(row);
     return;
   }
 
@@ -324,7 +411,7 @@ function renderChoicesFor(s){
 
     picker.appendChild(t);
     picker.appendChild(ok);
-    choicesBodyEl.appendChild(picker);
+    choicesBodyEl?.appendChild(picker);
 
     const row = document.createElement("div");
     row.className = "choice-row";
@@ -333,7 +420,7 @@ function renderChoicesFor(s){
     row.appendChild(chip("12:00","12:00","primary"));
     row.appendChild(chip("18:00","18:00","primary"));
     row.appendChild(chip("不明","不明"));
-    choicesBodyEl.appendChild(row);
+    choicesBodyEl?.appendChild(row);
     return;
   }
 
@@ -349,7 +436,7 @@ function renderChoicesFor(s){
     row.className = "choice-row";
     mbtis.forEach(m => row.appendChild(chip(m,m,"primary")));
     row.appendChild(chip("不明","不明"));
-    choicesBodyEl.appendChild(row);
+    choicesBodyEl?.appendChild(row);
     return;
   }
 
@@ -359,8 +446,10 @@ function renderChoicesFor(s){
 /** ====== main answer handler ====== */
 async function handleAnswer(v){
   pushUser(v);
-  inputEl.value = "";
-  inputEl.style.height = "auto";
+  if(inputEl){
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+  }
 
   const ok = applyAnswer(state, v);
   if(!ok){
@@ -401,7 +490,7 @@ function applyAnswer(s, v){
   }
 }
 
-/** ====== progress ====== */
+/** ====== progress lines (5 lines) ====== */
 function progressLinesFor(mode){
   switch(mode){
     case "mini_user":
@@ -410,7 +499,7 @@ function progressLinesFor(mode){
         "五行の偏りを静かに見ております…",
         "強みの出どころ（木火土金水）を整えています…",
         "あなたの恋の癖が出やすい場面を照らしております…",
-        "言葉にしてお返しする準備が整えております…"
+        "言葉にしてお返しする準備が整ってまいりました…"
       ];
     case "mini_partner":
       return [
@@ -423,9 +512,9 @@ function progressLinesFor(mode){
     case "free_report":
       return [
         "まず、相性の軸を立てております…",
-        "今週の運勢の波（強い日・弱い日）を見ています…",
+        "今の運勢の波（強い日・弱い日）を見ています…",
         "木火土金水のバランスから、衝突点を拾っています…",
-        "今週どうすべきかを考えております…",
+        "いま何をすると良いか、筋を整えております…",
         "迷いが減る形に、最終仕立てをしております…"
       ];
     case "paid_480":
@@ -455,11 +544,13 @@ function progressLinesFor(mode){
   }
 }
 
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
 async function generateWithProgress(mode, intake){
   const lines = progressLinesFor(mode);
   const ids = [];
   for(let i=0;i<lines.length;i++){
-    const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true, isProgress: true });
+    const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true });
     ids.push(id);
     await sleep(7000);
   }
@@ -517,26 +608,24 @@ async function advance(){
   if(state===STATES.ASK_CONCERN_LONG){
     hideChoices();
     pushBot("承りました。では、無料の鑑定をお渡しします。");
-
     const out = await generateWithProgress("free_report", intake);
-    const outNorm = normalizeOut(out);
 
-    // ★無料レポート保存（共有用）
+    // 出力保存（無料共有で使う）
+    const outNorm = normalizeOut(out);
     saveLastFree({ intake, outNorm });
 
     // 表示
-    if(outNorm.format === "html") pushBotHtml(outNorm.content);
+    if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
 
-    state=STATES.DONE;
+    // ★ここからが要件：無料後に3ボタンだけ見せる
+    state = STATES.DONE;
+    showAfterFree();
+    showPaidNoteIfNeeded();
 
-    // ★無料共有導線を出す
-    showFreeActions();
-    bindFreeActions();
-
-    // ★有料導線
-    showPaidActions();
-    bindPaidActions(() => intake);
+    // bind（無料共有 / 480 / 980）
+    bindFreeActions(() => intake);
+    bindPaidEntryActions(() => intake);
 
     pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
     return;
@@ -559,24 +648,141 @@ async function generate(mode, intake){
   return await res.json();
 }
 
-/** ====== FREE actions ====== */
-function showFreeActions(){
-  const box = document.getElementById("freeActions");
-  if(!box) return;
-  box.classList.remove("is-hidden");
-}
-function hideFreeActions(){
-  const box = document.getElementById("freeActions");
-  if(box) box.classList.add("is-hidden");
-}
-
-function bindFreeActions(){
-  const btnShare = document.getElementById("btnFreeShare");
-  if(!btnShare) return;
-
-  btnShare.onclick = async ()=>{
+/** ====== actions binding ====== */
+function bindFreeActions(intakeRefGetter){
+  // 無料共有ボタン
+  bindClickAllById("btnFreeShare", async ()=>{
     const last = loadLastFree();
-    if(!last){ pushBot("まだ無料レポートがありません。"); return; }
+    if(!last){
+      pushBot("まだ無料レポートがありません。");
+      return;
+    }
+
+    pushBot("共有リンクを作成します…");
+    const res = await fetch("/api/share-create",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ format:last.format, content:last.content })
+    });
+
+    if(!res.ok){
+      pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
+      return;
+    }
+
+    const { token } = await res.json();
+    const url = `${location.origin}/share.html?token=${token}`;
+
+    if(navigator.share){
+      try{
+        await navigator.share({ title:"占いばあや｜無料レポート", url });
+        pushBot("共有しました。");
+        return;
+      }catch{ /* cancel */ }
+    }
+
+    await copyText(url);
+    pushBot("共有リンクをコピーしました。貼り付けて送れます。");
+  });
+}
+
+function setPaidButtonsEnabled(enabled){
+  setEnabledById("btnPaid480", enabled);
+  setEnabledById("btnPaid980", enabled);
+}
+
+function bindPaidEntryActions(intakeRefGetter){
+  // 480
+  bindClickAllById("btnPaid480", async ()=>{
+    try{
+      setPaidButtonsEnabled(false);
+      pushBot("承知しました。480円版（1週間の流れ）をお出しします…");
+
+      const it = intakeRefGetter();
+      const out = await generateWithProgress("paid_480", it);
+
+      const outNorm = normalizeOut(out);
+      saveLastPaid({ mode:"paid_480", intake: it, outNorm });
+
+      if(outNorm.format==="html") pushBotHtml(outNorm.content);
+      else pushBot(outNorm.content);
+
+      // ★有料後：utility を表示（480/980は出しっぱなし）
+      showAfterPaid();
+      showPaidNoteIfNeeded();
+      bindPaidUtilityActions();
+
+    }catch(e){
+      pushBot("申し訳ございません。480円版の生成に失敗しました。");
+      console.error(e);
+    }finally{
+      setPaidButtonsEnabled(true);
+    }
+  });
+
+  // 980
+  bindClickAllById("btnPaid980", async ()=>{
+    try{
+      setPaidButtonsEnabled(false);
+      pushBot("承知しました。980円版（今後の運勢を詳しく）をお出しします…");
+
+      const it = intakeRefGetter();
+      const out = await generateWithProgress("paid_980", it);
+
+      const outNorm = normalizeOut(out);
+      saveLastPaid({ mode:"paid_980", intake: it, outNorm });
+
+      if(outNorm.format==="html") pushBotHtml(outNorm.content);
+      else pushBot(outNorm.content);
+
+      // ★有料後：utility を表示（480/980は出しっぱなし）
+      showAfterPaid();
+      showPaidNoteIfNeeded();
+      bindPaidUtilityActions();
+
+    }catch(e){
+      pushBot("申し訳ございません。980円版の生成に失敗しました。");
+      console.error(e);
+    }finally{
+      setPaidButtonsEnabled(true);
+    }
+  });
+}
+
+function bindPaidUtilityActions(){
+  // 再表示
+  bindClickAllById("btnPaidShow", ()=>{
+    const last = loadLastPaid();
+    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
+    if(last.format==="html") pushBotHtml(last.content);
+    else pushBot(last.content);
+  });
+
+  // コピー
+  bindClickAllById("btnPaidCopy", async ()=>{
+    const last = loadLastPaid();
+    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    const text = last.format==="html" ? htmlToText(last.content) : last.content;
+    await copyText(text);
+    pushBot("コピーしました。");
+  });
+
+  // PDF保存
+  bindClickAllById("btnPaidPdf", ()=>{
+    const last = loadLastPaid();
+    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    printAsPdf({
+      title: `占いばあや｜${last.mode}`,
+      html: last.format==="html" ? last.content : null,
+      text: last.format==="text" ? last.content : null,
+    });
+  });
+
+  // 共有
+  bindClickAllById("btnPaidShare", async ()=>{
+    const last = loadLastPaid();
+    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
 
     pushBot("共有リンクを作成します…");
     const res = await fetch("/api/share-create",{
@@ -593,166 +799,23 @@ function bindFreeActions(){
 
     if(navigator.share){
       try{
-        await navigator.share({ title:"占いばあや｜無料レポート", url });
+        await navigator.share({ title:"占いばあや｜有料レポート", url });
         pushBot("共有しました。");
         return;
-      }catch{}
+      }catch{ /* cancel */ }
     }
 
     await copyText(url);
     pushBot("共有リンクをコピーしました。貼り付けて送れます。");
-  };
+  });
 }
 
-/** ====== PAID actions ====== */
-const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
-
-function showPaidActions(){
-  const box = document.getElementById("paidActions");
-  const note = document.getElementById("paidActionsNote");
-  if(!box) return;
-  box.classList.remove("is-hidden");
-  if(DEV_PAID && note) note.classList.remove("is-hidden");
-}
-function hidePaidActions(){
-  const box = document.getElementById("paidActions");
-  if(box) box.classList.add("is-hidden");
-}
-function setPaidButtonsEnabled(enabled){
-  const b480 = document.getElementById("btnPaid480");
-  const b980 = document.getElementById("btnPaid980");
-  if(b480) b480.disabled = !enabled;
-  if(b980) b980.disabled = !enabled;
-}
-
-function bindPaidActions(intakeRefGetter){
-  const b480 = document.getElementById("btnPaid480");
-  const b980 = document.getElementById("btnPaid980");
-
-  // ★ utility ボタンをここで必ずバインド
-  bindPaidUtilityActions();
-
-  if(b480){
-    b480.onclick = async ()=>{
-      try{
-        setPaidButtonsEnabled(false);
-        pushBot("承知しました。480円版の鑑定をお出しします…");
-        const it = intakeRefGetter();
-        const out = await generateWithProgress("paid_480", it);
-
-        const outNorm = normalizeOut(out);
-        saveLastPaid({ mode:"paid_480", intake: it, outNorm });
-
-        if(outNorm.format === "html") pushBotHtml(outNorm.content);
-        else pushBot(outNorm.content);
-      }catch(e){
-        pushBot("申し訳ございません。480円版の生成に失敗しました。");
-        console.error(e);
-      }finally{
-        setPaidButtonsEnabled(true);
-      }
-    };
-  }
-
-  if(b980){
-    b980.onclick = async ()=>{
-      try{
-        setPaidButtonsEnabled(false);
-        pushBot("承知しました。980円版の鑑定をお出しします…");
-        const it = intakeRefGetter();
-        const out = await generateWithProgress("paid_980", it);
-
-        const outNorm = normalizeOut(out);
-        saveLastPaid({ mode:"paid_980", intake: it, outNorm });
-
-        if(outNorm.format === "html") pushBotHtml(outNorm.content);
-        else pushBot(outNorm.content);
-      }catch(e){
-        pushBot("申し訳ございません。980円版の生成に失敗しました。");
-        console.error(e);
-      }finally{
-        setPaidButtonsEnabled(true);
-      }
-    };
-  }
-}
-
-function bindPaidUtilityActions(){
-  const btnCopy = document.getElementById("btnPaidCopy");
-  const btnPdf  = document.getElementById("btnPaidPdf");
-  const btnShow = document.getElementById("btnPaidShow");
-  const btnShare= document.getElementById("btnPaidShare");
-
-  if(btnShow){
-    btnShow.onclick = ()=>{
-      const last = loadLastPaid();
-      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-      pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
-      if(last.format==="html") pushBotHtml(last.content);
-      else pushBot(last.content);
-    };
-  }
-
-  if(btnCopy){
-    btnCopy.onclick = async ()=>{
-      const last = loadLastPaid();
-      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-      const text = last.format==="html" ? htmlToText(last.content) : last.content;
-      await copyText(text);
-      pushBot("コピーしました。");
-    };
-  }
-
-  if(btnPdf){
-    btnPdf.onclick = ()=>{
-      const last = loadLastPaid();
-      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-      printAsPdf({
-        title: `占いばあや｜${last.mode}`,
-        html: last.format==="html" ? last.content : null,
-        text: last.format==="text" ? last.content : null,
-      });
-    };
-  }
-
-  if(btnShare){
-    btnShare.onclick = async ()=>{
-      const last = loadLastPaid();
-      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-
-      pushBot("共有リンクを作成します…");
-      const res = await fetch("/api/share-create",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ format:last.format, content:last.content })
-      });
-      if(!res.ok){
-        pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
-        return;
-      }
-      const { token } = await res.json();
-      const url = `${location.origin}/share.html?token=${token}`;
-
-      if(navigator.share){
-        try{
-          await navigator.share({ title:"占いばあや｜共有レポート", url });
-          pushBot("共有しました。");
-          return;
-        }catch{}
-      }
-
-      await copyText(url);
-      pushBot("共有リンクをコピーしました。貼り付けて送れます。");
-    };
-  }
-}
-
-/** ====== LINE風描画（botはアイコン付き） ====== */
+/** ====== chat rendering ====== */
 function typingDotsHtml(){
   return `<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
 }
 
-function pushBot(text, opts = { html:false, isProgress:false }){
+function pushBot(text, opts = { html:false }){
   const id = crypto.randomUUID();
   const safe = opts.html ? text : escapeHtml(text);
 
@@ -760,13 +823,13 @@ function pushBot(text, opts = { html:false, isProgress:false }){
     ? `<div class="avatar"><img src="${BOT_AVATAR_URL}" alt="占いばあや"></div>`
     : `<div class="avatar"><div class="fallback">ば</div></div>`;
 
-  chatEl.insertAdjacentHTML("beforeend", `
+  chatEl?.insertAdjacentHTML("beforeend", `
     <div class="row bot" data-msg-id="${id}">
       ${avatarHtml}
       <div class="bubble bot">${safe}</div>
     </div>
   `);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   return id;
 }
 
@@ -776,17 +839,17 @@ function pushBotHtml(html){
 
 function pushUser(text){
   const id = crypto.randomUUID();
-  chatEl.insertAdjacentHTML("beforeend", `
+  chatEl?.insertAdjacentHTML("beforeend", `
     <div class="row user" data-msg-id="${id}">
       <div class="bubble user">${escapeHtml(text)}</div>
     </div>
   `);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   return id;
 }
 
 function removeMsgById(id){
-  const el = chatEl.querySelector(`[data-msg-id="${id}"]`);
+  const el = chatEl?.querySelector(`[data-msg-id="${id}"]`);
   if(el) el.remove();
 }
 
@@ -845,5 +908,3 @@ function escapeHtml(s){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
-
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
