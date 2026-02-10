@@ -1,0 +1,72 @@
+<!-- /share.html -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>占いばあや｜共有レポート</title>
+  <style>
+    body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic UI","Meiryo",sans-serif; background:#0b0f1a; color:#e7e5e4;}
+    .wrap{ max-width:760px; margin:0 auto; padding:16px; }
+    .card{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:16px; padding:16px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 0; }
+    button{ padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#7c6ee6; color:#fff; font-weight:800; cursor:pointer; }
+    button.secondary{ background:rgba(255,255,255,.08); }
+    #content{ line-height:1.9; }
+    .muted{ color:rgba(231,229,228,.65); font-size:12px; margin-top:10px; }
+    @media print { .row, .muted { display:none !important; } body{ background:#fff; color:#000; } .card{ border:none; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 style="margin:0 0 8px; font-size:18px;">共有レポート</h1>
+      <div id="content">読み込み中…</div>
+
+      <div class="row">
+        <button id="btnCopy" class="secondary">コピー</button>
+        <button id="btnPdf" class="secondary">PDF保存</button>
+      </div>
+      <div class="muted">※ このリンクは一定期間で失効します。</div>
+    </div>
+  </div>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const token = qs.get("token");
+
+    function htmlToText(html){
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      return (doc.body?.innerText || "").trim();
+    }
+
+    async function load(){
+      if(!token){ document.getElementById("content").textContent="URLが不正です。"; return; }
+      const res = await fetch(`/api/share-get?token=${encodeURIComponent(token)}`);
+      if(!res.ok){
+        document.getElementById("content").textContent="この共有リンクは見つからないか、期限切れです。";
+        return;
+      }
+      const data = await res.json();
+      window.__shared = data;
+      if(data.format === "html"){
+        document.getElementById("content").innerHTML = data.content;
+      }else{
+        document.getElementById("content").textContent = data.content;
+      }
+    }
+
+    document.getElementById("btnCopy").onclick = async ()=>{
+      const d = window.__shared;
+      if(!d) return;
+      const text = d.format==="html" ? htmlToText(d.content) : d.content;
+      await navigator.clipboard.writeText(text);
+      alert("コピーしました。");
+    };
+
+    document.getElementById("btnPdf").onclick = ()=> window.print();
+
+    load();
+  </script>
+</body>
+</html>
