@@ -370,7 +370,7 @@ async function generateWithProgress(mode, intake){
   for(let i=0;i<lines.length;i++){
     const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true, isProgress: true });
     ids.push(id);
-    await sleep(10000); // ★ここがポイント：10秒ずつ
+    await sleep(4000); // ★ここがポイント：10秒ずつ
   }
 
   try{
