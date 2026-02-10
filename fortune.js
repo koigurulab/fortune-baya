@@ -1,5 +1,91 @@
 const STORAGE_KEY = "fortune_intake_v1_3";
 
+const PAID_LAST_KEY = "fortune_paid_last_v1";
+
+function nowIso(){ return new Date().toISOString(); }
+
+function intakeSig(it){
+  // 同一入力判定（必要なら項目追加）
+  return JSON.stringify({
+    v: it?.version,
+    user: it?.user,
+    partner: it?.partner,
+    concern: it?.concern,
+  });
+}
+
+function normalizeOut(out){
+  if(out?.html) return { format:"html", content: out.html };
+  if(out?.text) return { format:"text", content: out.text };
+  // 念のため
+  return { format:"text", content: String(out ?? "") };
+}
+
+function saveLastPaid({ mode, intake, outNorm }){
+  const payload = {
+    mode,
+    sig: intakeSig(intake),
+    format: outNorm.format,
+    content: outNorm.content,
+    createdAt: nowIso(),
+  };
+  localStorage.setItem(PAID_LAST_KEY, JSON.stringify(payload));
+  return payload;
+}
+
+function loadLastPaid(){
+  const s = localStorage.getItem(PAID_LAST_KEY);
+  if(!s) return null;
+  try{ return JSON.parse(s); }catch{ return null; }
+}
+
+function htmlToText(html){
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return (doc.body?.innerText || "").trim();
+}
+
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch{
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    return true;
+  }
+}
+
+function printAsPdf({ title, html, text }){
+  const w = window.open("", "_blank");
+  if(!w) return;
+
+  const contentHtml = html ? html : `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtml(text || "")}</pre>`;
+  w.document.open();
+  w.document.write(`
+<!doctype html>
+<html><head><meta charset="utf-8" />
+<title>${escapeHtml(title || "占いばあや｜鑑定")}</title>
+<style>
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic UI","Meiryo",sans-serif; margin:24px; }
+  h1{ font-size:18px; margin:0 0 12px; }
+  .meta{ font-size:12px; color:#555; margin-bottom:16px; }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(title || "占いばあや｜鑑定")}</h1>
+  <div class="meta">生成日時: ${escapeHtml(nowIso())}</div>
+  <div>${contentHtml}</div>
+  <script>window.onload=()=>{ window.print(); };</script>
+</body></html>
+  `);
+  w.document.close();
+}
+
 /** ====== BOTアイコン（任意）======
  * 画像を使うなら public/baya.png を置いて "/baya.png" にしてください。
  * 置かない場合は丸アイコンに「ば」が表示されます。
@@ -481,6 +567,77 @@ function setPaidButtonsEnabled(enabled){
 function bindPaidActions(intakeRefGetter){
   const b480 = document.getElementById("btnPaid480");
   const b980 = document.getElementById("btnPaid980");
+
+  function bindPaidUtilityActions(){
+  const btnCopy = document.getElementById("btnPaidCopy");
+  const btnPdf  = document.getElementById("btnPaidPdf");
+  const btnShow = document.getElementById("btnPaidShow");
+  const btnShare= document.getElementById("btnPaidShare");
+
+  if(btnShow){
+    btnShow.onclick = ()=>{
+      const last = loadLastPaid();
+      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+      pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
+      if(last.format==="html") pushBotHtml(last.content);
+      else pushBot(last.content);
+    };
+  }
+
+  if(btnCopy){
+    btnCopy.onclick = async ()=>{
+      const last = loadLastPaid();
+      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+      const text = last.format==="html" ? htmlToText(last.content) : last.content;
+      await copyText(text);
+      pushBot("コピーしました。");
+    };
+  }
+
+  if(btnPdf){
+    btnPdf.onclick = ()=>{
+      const last = loadLastPaid();
+      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+      printAsPdf({
+        title: `占いばあや｜${last.mode}`,
+        html: last.format==="html" ? last.content : null,
+        text: last.format==="text" ? last.content : null,
+      });
+    };
+  }
+
+  if(btnShare){
+    btnShare.onclick = async ()=>{
+      const last = loadLastPaid();
+      if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+
+      pushBot("共有リンクを作成します…");
+      const res = await fetch("/api/share-create",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ format:last.format, content:last.content })
+      });
+      if(!res.ok){
+        pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
+        return;
+      }
+      const { token } = await res.json();
+      const url = `${location.origin}/share.html?token=${token}`;
+
+      // Web Share APIが使える端末は共有UIを出す
+      if(navigator.share){
+        try{
+          await navigator.share({ title:"占いばあや｜共有レポート", url });
+          pushBot("共有しました。");
+          return;
+        }catch{ /* ユーザーキャンセル等 */ }
+      }
+
+      await copyText(url);
+      pushBot("共有リンクをコピーしました。貼り付けて送れます。");
+    };
+  }
+}
 
   if(b480){
     b480.onclick = async ()=>{
