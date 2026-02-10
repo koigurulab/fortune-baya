@@ -1,11 +1,12 @@
 const STORAGE_KEY = "fortune_intake_v1_3";
 
 const PAID_LAST_KEY = "fortune_paid_last_v1";
+const FREE_LAST_KEY = "fortune_free_last_v1";
 
 function nowIso(){ return new Date().toISOString(); }
 
+/** 同一入力判定（必要なら項目追加） */
 function intakeSig(it){
-  // 同一入力判定（必要なら項目追加）
   return JSON.stringify({
     v: it?.version,
     user: it?.user,
@@ -14,13 +15,14 @@ function intakeSig(it){
   });
 }
 
+/** out を {format, content} に正規化 */
 function normalizeOut(out){
   if(out?.html) return { format:"html", content: out.html };
   if(out?.text) return { format:"text", content: out.text };
-  // 念のため
   return { format:"text", content: String(out ?? "") };
 }
 
+/** ===== 保存（有料 / 無料） ===== */
 function saveLastPaid({ mode, intake, outNorm }){
   const payload = {
     mode,
@@ -39,6 +41,25 @@ function loadLastPaid(){
   try{ return JSON.parse(s); }catch{ return null; }
 }
 
+function saveLastFree({ intake, outNorm }){
+  const payload = {
+    mode: "free_report",
+    sig: intakeSig(intake),
+    format: outNorm.format,
+    content: outNorm.content,
+    createdAt: nowIso(),
+  };
+  localStorage.setItem(FREE_LAST_KEY, JSON.stringify(payload));
+  return payload;
+}
+
+function loadLastFree(){
+  const s = localStorage.getItem(FREE_LAST_KEY);
+  if(!s) return null;
+  try{ return JSON.parse(s); }catch{ return null; }
+}
+
+/** ===== ユーティリティ ===== */
 function htmlToText(html){
   const doc = new DOMParser().parseFromString(html, "text/html");
   return (doc.body?.innerText || "").trim();
@@ -49,7 +70,6 @@ async function copyText(text){
     await navigator.clipboard.writeText(text);
     return true;
   }catch{
-    // fallback
     const ta = document.createElement("textarea");
     ta.value = text;
     document.body.appendChild(ta);
@@ -64,7 +84,10 @@ function printAsPdf({ title, html, text }){
   const w = window.open("", "_blank");
   if(!w) return;
 
-  const contentHtml = html ? html : `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtml(text || "")}</pre>`;
+  const contentHtml = html
+    ? html
+    : `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtml(text || "")}</pre>`;
+
   w.document.open();
   w.document.write(`
 <!doctype html>
@@ -86,26 +109,23 @@ function printAsPdf({ title, html, text }){
   w.document.close();
 }
 
-/** ====== BOTアイコン（任意）======
- * 画像を使うなら public/baya.png を置いて "/baya.png" にしてください。
- * 置かない場合は丸アイコンに「ば」が表示されます。
- */
+/** ====== BOTアイコン（任意）====== */
 const BOT_AVATAR_URL = "/baya.png";
 
 const STATES = {
-  ASK_USER_BDAY: "ASK_USER_BDAY",        // 必須（不明ボタン無し）
+  ASK_USER_BDAY: "ASK_USER_BDAY",
   ASK_USER_GENDER: "ASK_USER_GENDER",
-  ASK_USER_BTIME: "ASK_USER_BTIME",      // 不明OK
-  ASK_USER_PREF: "ASK_USER_PREF",        // 自由入力
-  ASK_USER_MBTI: "ASK_USER_MBTI",        // 不明OK
+  ASK_USER_BTIME: "ASK_USER_BTIME",
+  ASK_USER_PREF: "ASK_USER_PREF",
+  ASK_USER_MBTI: "ASK_USER_MBTI",
   MINI_READ_USER: "MINI_READ_USER",
 
-  ASK_PARTNER_BDAY: "ASK_PARTNER_BDAY",  // 不明入力OK（ボタンは出さない）
+  ASK_PARTNER_BDAY: "ASK_PARTNER_BDAY",
   ASK_PARTNER_GENDER: "ASK_PARTNER_GENDER",
-  ASK_PARTNER_PREF: "ASK_PARTNER_PREF",  // 自由入力（不明OK）
+  ASK_PARTNER_PREF: "ASK_PARTNER_PREF",
   ASK_PARTNER_AGE_RANGE: "ASK_PARTNER_AGE_RANGE",
-  ASK_PARTNER_BTIME: "ASK_PARTNER_BTIME",// 不明OK
-  ASK_PARTNER_MBTI: "ASK_PARTNER_MBTI",  // 不明OK
+  ASK_PARTNER_BTIME: "ASK_PARTNER_BTIME",
+  ASK_PARTNER_MBTI: "ASK_PARTNER_MBTI",
 
   ASK_RELATION: "ASK_RELATION",
   ASK_RECENT_EVENT: "ASK_RECENT_EVENT",
@@ -137,14 +157,14 @@ let intake = loadIntake();
 let state = STATES.ASK_USER_BDAY;
 
 const chatEl = document.getElementById("chat");
-const inputEl = document.getElementById("input");     // textarea想定
+const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const resetBtn = document.getElementById("reset");
 
 const choicesEl = document.getElementById("choices");
 const choicesBodyEl = document.getElementById("choicesBody");
 
-/** ====== 1) Enterで送信しない（クリック送信のみ） ====== */
+/** ====== Enterで送信しない（クリック送信のみ） ====== */
 sendBtn.addEventListener("click", async () => {
   const v = inputEl.value.trim();
   if(!v) return;
@@ -152,15 +172,11 @@ sendBtn.addEventListener("click", async () => {
 });
 
 inputEl.addEventListener("keydown", (e) => {
-  // Enterで送信させない。textareaなら改行はデフォルトで入る
-  // ※もし input type="text" の場合は、Enterでフォームsubmitされることがあるので、
-  //   HTML側を textarea にしておくのが安全です。
   if (e.key === "Enter") {
-    // 送信はしない（何もしない）
+    // 送信しない（textareaなら改行は入る）
   }
 });
 
-// テキストエリアの自動リサイズ
 inputEl.addEventListener("input", () => {
   inputEl.style.height = "auto";
   inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + "px";
@@ -173,6 +189,7 @@ resetBtn.addEventListener("click", ()=>{
   chatEl.innerHTML = "";
   hideChoices();
   hidePaidActions();
+  hideFreeActions();
   boot();
 });
 
@@ -212,10 +229,12 @@ function questionFor(s){
 
 /** ====== choices ====== */
 function hideChoices(){
+  if(!choicesEl) return;
   choicesEl.classList.add("is-hidden");
-  choicesBodyEl.innerHTML = "";
+  if(choicesBodyEl) choicesBodyEl.innerHTML = "";
 }
 function showChoices(){
+  if(!choicesEl) return;
   choicesEl.classList.remove("is-hidden");
 }
 function chip(label, value, extraClass=""){
@@ -233,9 +252,9 @@ function renderChoicesFor(s){
     return;
   }
 
+  if(!choicesBodyEl) return;
   choicesBodyEl.innerHTML = "";
 
-  // 本人の生年月日：date picker（不明なし）
   if(s===STATES.ASK_USER_BDAY){
     showChoices();
     const box = document.createElement("div");
@@ -256,7 +275,6 @@ function renderChoicesFor(s){
     return;
   }
 
-  // 相手の生年月日：date picker（不明ボタンは出さない。自由入力で「不明」許可）
   if(s===STATES.ASK_PARTNER_BDAY){
     showChoices();
     const box = document.createElement("div");
@@ -277,7 +295,6 @@ function renderChoicesFor(s){
     return;
   }
 
-  // 性別（本人/相手）
   if(s===STATES.ASK_USER_GENDER || s===STATES.ASK_PARTNER_GENDER){
     showChoices();
     const row = document.createElement("div");
@@ -289,7 +306,6 @@ function renderChoicesFor(s){
     return;
   }
 
-  // 出生時刻（本人/相手）：time picker + presets + 不明
   if(s===STATES.ASK_USER_BTIME || s===STATES.ASK_PARTNER_BTIME){
     showChoices();
 
@@ -321,7 +337,6 @@ function renderChoicesFor(s){
     return;
   }
 
-  // MBTI（本人/相手）
   if(s===STATES.ASK_USER_MBTI || s===STATES.ASK_PARTNER_MBTI){
     showChoices();
     const mbtis = [
@@ -338,7 +353,6 @@ function renderChoicesFor(s){
     return;
   }
 
-  // それ以外：選択肢なし
   hideChoices();
 }
 
@@ -358,14 +372,12 @@ async function handleAnswer(v){
 
 function applyAnswer(s, v){
   try{
-    // user
     if(s===STATES.ASK_USER_BDAY){ if(!isDate(v)) return false; intake.user.birthday = normDate(v); }
     if(s===STATES.ASK_USER_GENDER){ intake.user.gender = v; }
     if(s===STATES.ASK_USER_BTIME){ if(!isTimeOrUnknown(v)) return false; intake.user.birth_time = normTimeOrNull(v); }
     if(s===STATES.ASK_USER_PREF){ if(v.length<2) return false; intake.user.birth_prefecture = v; }
     if(s===STATES.ASK_USER_MBTI){ if(!isMbtiOrUnknown(v)) return false; intake.user.mbti = normMbtiOrNull(v); }
 
-    // partner
     if(s===STATES.ASK_PARTNER_BDAY){ intake.partner.birthday = normDateOrNull(v); }
     if(s===STATES.ASK_PARTNER_GENDER){ intake.partner.gender = v; }
     if(s===STATES.ASK_PARTNER_PREF){
@@ -389,7 +401,7 @@ function applyAnswer(s, v){
   }
 }
 
-/** ====== 3) 重い生成は“段階メッセージ”を挟む ====== */
+/** ====== progress ====== */
 function progressLinesFor(mode){
   switch(mode){
     case "mini_user":
@@ -400,7 +412,6 @@ function progressLinesFor(mode){
         "あなたの恋の癖が出やすい場面を照らしております…",
         "言葉にしてお返しする準備が整えております…"
       ];
-
     case "mini_partner":
       return [
         "お相手様の気配を辿っております…",
@@ -409,16 +420,14 @@ function progressLinesFor(mode){
         "反応が揺れる理由を整理しています…",
         "関係の扱い方が見えてまいりました…"
       ];
-
     case "free_report":
       return [
         "まず、相性の軸を立てております…",
         "今週の運勢の波（強い日・弱い日）を見ています…",
         "木火土金水のバランスから、衝突点を拾っています…",
-        "今週どうすべきかを考えておりす…",
+        "今週どうすべきかを考えております…",
         "迷いが減る形に、最終仕立てをしております…"
       ];
-
     case "paid_480":
       return [
         "相性を一段深く覗いております…",
@@ -427,7 +436,6 @@ function progressLinesFor(mode){
         "文面・会い方・間の取り方まで整えています…",
         "迷いが減る形に、最終仕立てをしております…"
       ];
-
     case "paid_980":
       return [
         "ご縁の深いところから読み直しております…",
@@ -436,7 +444,6 @@ function progressLinesFor(mode){
         "破綻を避ける線引きと、攻め筋を同時に整えています…",
         "決断に使えるレベルまで、鑑定を仕上げますね…"
       ];
-
     default:
       return [
         "少々お待ちくださいませ…",
@@ -450,18 +457,15 @@ function progressLinesFor(mode){
 
 async function generateWithProgress(mode, intake){
   const lines = progressLinesFor(mode);
-
-  // 3つ“順番に”出す（2秒ごとに変化）
   const ids = [];
   for(let i=0;i<lines.length;i++){
     const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true, isProgress: true });
     ids.push(id);
-    await sleep(7000); // ★ここがポイント：7秒ずつ
+    await sleep(7000);
   }
 
   try{
     const out = await generate(mode, intake);
-    // progressメッセージは見栄え優先で消す
     ids.forEach(removeMsgById);
     return out;
   }catch(e){
@@ -472,7 +476,6 @@ async function generateWithProgress(mode, intake){
 
 /** ====== state advance ====== */
 async function advance(){
-  // user flow
   if(state===STATES.ASK_USER_BDAY){ state=STATES.ASK_USER_GENDER; ask(state); return; }
   if(state===STATES.ASK_USER_GENDER){ state=STATES.ASK_USER_BTIME; ask(state); return; }
   if(state===STATES.ASK_USER_BTIME){ state=STATES.ASK_USER_PREF; ask(state); return; }
@@ -488,7 +491,6 @@ async function advance(){
     state=STATES.ASK_PARTNER_BDAY; ask(state); return;
   }
 
-  // partner flow
   if(state===STATES.ASK_PARTNER_BDAY){ state=STATES.ASK_PARTNER_GENDER; ask(state); return; }
   if(state===STATES.ASK_PARTNER_GENDER){ state=STATES.ASK_PARTNER_PREF; ask(state); return; }
 
@@ -515,10 +517,24 @@ async function advance(){
   if(state===STATES.ASK_CONCERN_LONG){
     hideChoices();
     pushBot("承りました。では、無料の鑑定をお渡しします。");
+
     const out = await generateWithProgress("free_report", intake);
-    pushBotHtml(out.html);
+    const outNorm = normalizeOut(out);
+
+    // ★無料レポート保存（共有用）
+    saveLastFree({ intake, outNorm });
+
+    // 表示
+    if(outNorm.format === "html") pushBotHtml(outNorm.content);
+    else pushBot(outNorm.content);
+
     state=STATES.DONE;
 
+    // ★無料共有導線を出す
+    showFreeActions();
+    bindFreeActions();
+
+    // ★有料導線
     showPaidActions();
     bindPaidActions(() => intake);
 
@@ -543,7 +559,52 @@ async function generate(mode, intake){
   return await res.json();
 }
 
-/** ====== paid actions ====== */
+/** ====== FREE actions ====== */
+function showFreeActions(){
+  const box = document.getElementById("freeActions");
+  if(!box) return;
+  box.classList.remove("is-hidden");
+}
+function hideFreeActions(){
+  const box = document.getElementById("freeActions");
+  if(box) box.classList.add("is-hidden");
+}
+
+function bindFreeActions(){
+  const btnShare = document.getElementById("btnFreeShare");
+  if(!btnShare) return;
+
+  btnShare.onclick = async ()=>{
+    const last = loadLastFree();
+    if(!last){ pushBot("まだ無料レポートがありません。"); return; }
+
+    pushBot("共有リンクを作成します…");
+    const res = await fetch("/api/share-create",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ format:last.format, content:last.content })
+    });
+    if(!res.ok){
+      pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
+      return;
+    }
+    const { token } = await res.json();
+    const url = `${location.origin}/share.html?token=${token}`;
+
+    if(navigator.share){
+      try{
+        await navigator.share({ title:"占いばあや｜無料レポート", url });
+        pushBot("共有しました。");
+        return;
+      }catch{}
+    }
+
+    await copyText(url);
+    pushBot("共有リンクをコピーしました。貼り付けて送れます。");
+  };
+}
+
+/** ====== PAID actions ====== */
 const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
 
 function showPaidActions(){
@@ -568,7 +629,55 @@ function bindPaidActions(intakeRefGetter){
   const b480 = document.getElementById("btnPaid480");
   const b980 = document.getElementById("btnPaid980");
 
-  function bindPaidUtilityActions(){
+  // ★ utility ボタンをここで必ずバインド
+  bindPaidUtilityActions();
+
+  if(b480){
+    b480.onclick = async ()=>{
+      try{
+        setPaidButtonsEnabled(false);
+        pushBot("承知しました。480円版の鑑定をお出しします…");
+        const it = intakeRefGetter();
+        const out = await generateWithProgress("paid_480", it);
+
+        const outNorm = normalizeOut(out);
+        saveLastPaid({ mode:"paid_480", intake: it, outNorm });
+
+        if(outNorm.format === "html") pushBotHtml(outNorm.content);
+        else pushBot(outNorm.content);
+      }catch(e){
+        pushBot("申し訳ございません。480円版の生成に失敗しました。");
+        console.error(e);
+      }finally{
+        setPaidButtonsEnabled(true);
+      }
+    };
+  }
+
+  if(b980){
+    b980.onclick = async ()=>{
+      try{
+        setPaidButtonsEnabled(false);
+        pushBot("承知しました。980円版の鑑定をお出しします…");
+        const it = intakeRefGetter();
+        const out = await generateWithProgress("paid_980", it);
+
+        const outNorm = normalizeOut(out);
+        saveLastPaid({ mode:"paid_980", intake: it, outNorm });
+
+        if(outNorm.format === "html") pushBotHtml(outNorm.content);
+        else pushBot(outNorm.content);
+      }catch(e){
+        pushBot("申し訳ございません。980円版の生成に失敗しました。");
+        console.error(e);
+      }finally{
+        setPaidButtonsEnabled(true);
+      }
+    };
+  }
+}
+
+function bindPaidUtilityActions(){
   const btnCopy = document.getElementById("btnPaidCopy");
   const btnPdf  = document.getElementById("btnPaidPdf");
   const btnShow = document.getElementById("btnPaidShow");
@@ -624,13 +733,12 @@ function bindPaidActions(intakeRefGetter){
       const { token } = await res.json();
       const url = `${location.origin}/share.html?token=${token}`;
 
-      // Web Share APIが使える端末は共有UIを出す
       if(navigator.share){
         try{
           await navigator.share({ title:"占いばあや｜共有レポート", url });
           pushBot("共有しました。");
           return;
-        }catch{ /* ユーザーキャンセル等 */ }
+        }catch{}
       }
 
       await copyText(url);
@@ -639,42 +747,7 @@ function bindPaidActions(intakeRefGetter){
   }
 }
 
-  if(b480){
-    b480.onclick = async ()=>{
-      try{
-        setPaidButtonsEnabled(false);
-        pushBot("承知しました。480円版の鑑定をお出しします…");
-        const it = intakeRefGetter();
-        const out = await generateWithProgress("paid_480", it); // サーバのmodeに合わせてください
-        pushBot(out.text || out.html || "");
-      }catch(e){
-        pushBot("申し訳ございません。480円版の生成に失敗しました。");
-        console.error(e);
-      }finally{
-        setPaidButtonsEnabled(true);
-      }
-    };
-  }
-
-  if(b980){
-    b980.onclick = async ()=>{
-      try{
-        setPaidButtonsEnabled(false);
-        pushBot("承知しました。980円版の鑑定をお出しします…");
-        const it = intakeRefGetter();
-        const out = await generateWithProgress("paid_980", it);
-        pushBot(out.text || out.html || "");
-      }catch(e){
-        pushBot("申し訳ございません。980円版の生成に失敗しました。");
-        console.error(e);
-      }finally{
-        setPaidButtonsEnabled(true);
-      }
-    };
-  }
-}
-
-/** ====== 2) LINE風描画（botはアイコン付き） ====== */
+/** ====== LINE風描画（botはアイコン付き） ====== */
 function typingDotsHtml(){
   return `<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
 }
