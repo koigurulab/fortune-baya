@@ -1,7 +1,12 @@
-// fortune.js (FULL)
+// fortune.js (FULL) — 2026-02
+// 要件反映
+// 1) 無料レポートが出るまで：アクションボタンは一切出さない
+// 2) 無料後：480/980 の2ボタンだけ表示（共有は出さない）
+// 3) 有料後：コピー/PDF/再表示を表示（480/980は出しっぱなし）※共有は出さない
+// 4) 相談文が短い場合：弾かずに追質問してから生成へ進める（自然な会話）
+// 5) HTMLでid重複があっても、最後のpaidActionsだけ採用（それ以外は非表示）
 
 const STORAGE_KEY = "fortune_intake_v1_3";
-
 const FREE_LAST_KEY = "fortune_free_last_v1";
 const PAID_LAST_KEY = "fortune_paid_last_v1";
 
@@ -12,38 +17,41 @@ function qsAllById(id){
   try{
     return Array.from(document.querySelectorAll(`#${CSS.escape(id)}`));
   }catch{
-    // CSS.escape が無い環境の保険
     return Array.from(document.querySelectorAll(`#${id}`));
   }
 }
-function firstById(id){
-  return document.getElementById(id) || null;
+function lastById(id){
+  const arr = qsAllById(id);
+  return arr.length ? arr[arr.length - 1] : null;
 }
-function setVisibleEls(els, visible){
-  els.forEach(el=>{
-    if(!el) return;
-    // class でも消す
-    if(visible) el.classList.remove("is-hidden");
-    else el.classList.add("is-hidden");
-    // CSSが無くても消えるように強制
-    el.hidden = !visible;
-    el.style.display = visible ? "" : "none";
-  });
+function hideAllButLastById(id){
+  const arr = qsAllById(id);
+  if(arr.length <= 1) return;
+  for(let i=0;i<arr.length-1;i++){
+    const el = arr[i];
+    if(!el) continue;
+    el.classList.add("is-hidden");
+    el.hidden = true;
+    el.style.display = "none";
+  }
 }
-function setVisibleById(id, visible){
-  setVisibleEls(qsAllById(id), visible);
+function setVisibleEl(el, visible){
+  if(!el) return;
+  if(visible) el.classList.remove("is-hidden");
+  else el.classList.add("is-hidden");
+  el.hidden = !visible;
+  el.style.display = visible ? "" : "none";
 }
-function setEnabledById(id, enabled){
-  qsAllById(id).forEach(el=>{
-    if(!el) return;
-    el.disabled = !enabled;
-  });
+function setVisibleAllById(id, visible){
+  qsAllById(id).forEach(el => setVisibleEl(el, visible));
 }
-function bindClickAllById(id, handler){
-  qsAllById(id).forEach(el=>{
-    if(!el) return;
-    el.onclick = handler;
-  });
+function setEnabledEl(el, enabled){
+  if(!el) return;
+  el.disabled = !enabled;
+}
+function bindClickEl(el, handler){
+  if(!el) return;
+  el.onclick = handler;
 }
 
 /** ====== Intake signature / storage ====== */
@@ -55,7 +63,6 @@ function intakeSig(it){
     concern: it?.concern,
   });
 }
-
 function normalizeOut(out){
   if(out?.html) return { format:"html", content: out.html };
   if(out?.text) return { format:"text", content: out.text };
@@ -142,60 +149,84 @@ function printAsPdf({ title, html, text }){
   w.document.close();
 }
 
-/** ====== UI show/hide policy (REQUIREMENT) ======
- *  無料前：freeActions, paidActions(=課金/utility含む) を全部非表示
- *  無料後：freeActions（無料共有）＋ paidEntry（480/980）だけ表示、paidUtilityは非表示
- *  有料後：paidUtility（コピー/PDF/再表示/共有）を表示、paidEntryは出しっぱなし
+/** ====== UI show/hide policy ======
+ * 無料前：freeActions / paidActions を全部非表示
+ * 無料後：paidEntry(480/980)のみ表示
+ * 有料後：paidUtility(コピー/PDF/再表示)表示、paidEntryは出しっぱなし
+ * 共有：無料/有料ともに廃止（非表示）
  */
-function hideAllActionBlocks(){
-  setVisibleById("freeActions", false);
-  // paidActions はHTMLで重複してても全件消す
-  setVisibleById("paidActions", false);
-  // ボタン単位でも念のため消す（CSS欠落対策）
-  setVisibleEls(qsAllById("btnFreeShare"), false);
-  setVisibleEls(qsAllById("btnPaid480"), false);
-  setVisibleEls(qsAllById("btnPaid980"), false);
-  setVisibleEls(qsAllById("btnPaidCopy"), false);
-  setVisibleEls(qsAllById("btnPaidPdf"), false);
-  setVisibleEls(qsAllById("btnPaidShow"), false);
-  setVisibleEls(qsAllById("btnPaidShare"), false);
-  setVisibleById("paidActionsNote", false);
+function initActionBlocks(){
+  // HTMLでidが重複してるので、paidActionsは「最後の1つ」だけ採用し、それ以外は常に非表示
+  hideAllButLastById("paidActions");
+  // freeActionsも今は使わない（共有廃止）
+  setVisibleAllById("freeActions", false);
+
+  // paidActions（最後だけ）を握る
+  const paidBox = lastById("paidActions");
+
+  // 中のボタン（最後のpaidActions配下にある前提。無い場合はidで最後を拾う）
+  const btn480 = (paidBox && paidBox.querySelector("#btnPaid480")) || lastById("btnPaid480");
+  const btn980 = (paidBox && paidBox.querySelector("#btnPaid980")) || lastById("btnPaid980");
+  const btnCopy = (paidBox && paidBox.querySelector("#btnPaidCopy")) || lastById("btnPaidCopy");
+  const btnPdf  = (paidBox && paidBox.querySelector("#btnPaidPdf"))  || lastById("btnPaidPdf");
+  const btnShow = (paidBox && paidBox.querySelector("#btnPaidShow")) || lastById("btnPaidShow");
+  const btnShare= (paidBox && paidBox.querySelector("#btnPaidShare"))|| lastById("btnPaidShare");
+  const note    = (paidBox && paidBox.querySelector("#paidActionsNote")) || lastById("paidActionsNote");
+
+  // paid box自体を隠す（無料が出るまで）
+  setVisibleEl(paidBox, false);
+
+  // 念のため個別も隠す
+  setVisibleEl(btn480, false);
+  setVisibleEl(btn980, false);
+  setVisibleEl(btnCopy, false);
+  setVisibleEl(btnPdf,  false);
+  setVisibleEl(btnShow, false);
+  setVisibleEl(btnShare,false); // 共有は常に消す
+  setVisibleEl(note,    false);
+
+  // ボタン文言（薄い→具体化）
+  if(btnCopy) btnCopy.textContent = "占い結果を文章としてコピー";
+  if(btnPdf)  btnPdf.textContent  = "占い結果をPDF保存";
+  if(btnShow) btnShow.textContent = "占い結果を再表示（内容は変わりません）";
+
+  return { paidBox, btn480, btn980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
-function showAfterFree(){
-  // 無料共有を表示
-  setVisibleById("freeActions", true);
-  setVisibleEls(qsAllById("btnFreeShare"), true);
 
-  // 有料ボタン（480/980）を表示（コンテナごと出す）
-  setVisibleById("paidActions", true);
-  setVisibleEls(qsAllById("btnPaid480"), true);
-  setVisibleEls(qsAllById("btnPaid980"), true);
+function showAfterFree(ui){
+  // 無料後：paid entryのみ表示
+  setVisibleEl(ui.paidBox, true);
+  setой; // (intentional no-op safeguard)
+  setVisibleEl(ui.btn480, true);
+  setVisibleEl(ui.btn980, true);
 
-  // paid utility はまだ出さない
-  setVisibleEls(qsAllById("btnPaidCopy"), false);
-  setVisibleEls(qsAllById("btnPaidPdf"), false);
-  setVisibleEls(qsAllById("btnPaidShow"), false);
-  setVisibleEls(qsAllById("btnPaidShare"), false);
+  // 有料ユーティリティはまだ
+  setVisibleEl(ui.btnCopy, false);
+  setVisibleEl(ui.btnPdf,  false);
+  setVisibleEl(ui.btnShow, false);
 
-  // dev_paid 注記は dev_paid=1 の時だけ（後で showPaidNoteIfNeeded が制御）
+  // 共有は出さない
+  setVisibleEl(ui.btnShare, false);
+  setVisibleEl(ui.note, DEV_PAID);
 }
-function showAfterPaid(){
-  // paidActions は表示継続、480/980も残す
-  setVisibleById("paidActions", true);
-  setVisibleEls(qsAllById("btnPaid480"), true);
-  setVisibleEls(qsAllById("btnPaid980"), true);
 
-  // utility を表示
-  setVisibleEls(qsAllById("btnPaidCopy"), true);
-  setVisibleEls(qsAllById("btnPaidPdf"), true);
-  setVisibleEls(qsAllById("btnPaidShow"), true);
-  setVisibleEls(qsAllById("btnPaidShare"), true);
+function showAfterPaid(ui){
+  // paid entryは出しっぱなし
+  setVisibleEl(ui.paidBox, true);
+  setVisibleEl(ui.btn480, true);
+  setVisibleEl(ui.btn980, true);
+
+  // utilityを表示
+  setVisibleEl(ui.btnCopy, true);
+  setVisibleEl(ui.btnPdf,  true);
+  setVisibleEl(ui.btnShow, true);
+
+  // 共有は出さない
+  setVisibleEl(ui.btnShare, false);
+  setVisibleEl(ui.note, DEV_PAID);
 }
 
 const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
-function showPaidNoteIfNeeded(){
-  setVisibleById("paidActionsNote", DEV_PAID);
-}
 
 /** ====== BOTアイコン（任意）====== */
 const BOT_AVATAR_URL = "/baya.png";
@@ -216,8 +247,8 @@ const STATES = {
 
   ASK_RELATION: "ASK_RELATION",
   ASK_RECENT_EVENT: "ASK_RECENT_EVENT",
-
   ASK_CONCERN_LONG: "ASK_CONCERN_LONG",
+
   DONE: "DONE",
 };
 
@@ -242,12 +273,19 @@ function newIntake(){
 let intake = loadIntake();
 let state = STATES.ASK_USER_BDAY;
 
-const chatEl = firstById("chat");
-const inputEl = firstById("input");
-const sendBtn = firstById("sendBtn");
-const resetBtn = firstById("reset");
-const choicesEl = firstById("choices");
-const choicesBodyEl = firstById("choicesBody");
+// 相談文が短い時の追質問制御
+let concernNeedsMore = false;
+let concernFollowupCount = 0;
+
+const chatEl = document.getElementById("chat");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const resetBtn = document.getElementById("reset");
+const choicesEl = document.getElementById("choices");
+const choicesBodyEl = document.getElementById("choicesBody");
+
+// UI（paidActionsは最後の1つだけ掴む）
+const UI = initActionBlocks();
 
 /** ====== composer ====== */
 sendBtn?.addEventListener("click", async () => {
@@ -257,7 +295,7 @@ sendBtn?.addEventListener("click", async () => {
 });
 inputEl?.addEventListener("keydown", (e) => {
   if(e.key === "Enter"){
-    // 送信はしない（改行のみ）。textarea前提
+    // 送信しない（textareaで改行のみ）
   }
 });
 inputEl?.addEventListener("input", () => {
@@ -273,17 +311,21 @@ resetBtn?.addEventListener("click", ()=>{
 
   intake = newIntake();
   state = STATES.ASK_USER_BDAY;
+  concernNeedsMore = false;
+  concernFollowupCount = 0;
 
   if(chatEl) chatEl.innerHTML = "";
   hideChoices();
-  hideAllActionBlocks(); // ★ここで全ボタンを強制非表示
+  // アクション完全非表示へ
+  initActionBlocks();
   boot();
 });
 
 /** ====== boot ====== */
 function boot(){
-  hideAllActionBlocks(); // ★最初から出る事故をここで潰す
-  showPaidNoteIfNeeded(); // note 自体もまずは隠れている（paidActionsが出るまでは見えない）
+  // 初期表示でボタンが一瞬見える問題は、JSだけだと完全撲滅が難しいため、
+  // ここで可能な限り早く非表示を強制します（HTML側で hidden 付与がベスト）。
+  initActionBlocks();
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
   ask(state);
 }
@@ -339,7 +381,6 @@ function renderChoicesFor(s){
     hideChoices();
     return;
   }
-
   if(choicesBodyEl) choicesBodyEl.innerHTML = "";
 
   if(s===STATES.ASK_USER_BDAY){
@@ -461,12 +502,14 @@ async function handleAnswer(v){
 
 function applyAnswer(s, v){
   try{
+    // user
     if(s===STATES.ASK_USER_BDAY){ if(!isDate(v)) return false; intake.user.birthday = normDate(v); }
     if(s===STATES.ASK_USER_GENDER){ intake.user.gender = v; }
     if(s===STATES.ASK_USER_BTIME){ if(!isTimeOrUnknown(v)) return false; intake.user.birth_time = normTimeOrNull(v); }
     if(s===STATES.ASK_USER_PREF){ if(v.length<2) return false; intake.user.birth_prefecture = v; }
     if(s===STATES.ASK_USER_MBTI){ if(!isMbtiOrUnknown(v)) return false; intake.user.mbti = normMbtiOrNull(v); }
 
+    // partner
     if(s===STATES.ASK_PARTNER_BDAY){ intake.partner.birthday = normDateOrNull(v); }
     if(s===STATES.ASK_PARTNER_GENDER){ intake.partner.gender = v; }
     if(s===STATES.ASK_PARTNER_PREF){
@@ -479,7 +522,23 @@ function applyAnswer(s, v){
 
     if(s===STATES.ASK_RELATION){ if(v.length<2) return false; intake.partner.relation = v; }
     if(s===STATES.ASK_RECENT_EVENT){ if(v.length<2) return false; intake.partner.recent_event = v; }
-    if(s===STATES.ASK_CONCERN_LONG){ if(v.length<30) return false; intake.concern.free_text = v; }
+
+    // 相談文：短いなら弾かずに通し、後で追質問フローへ
+    if(s===STATES.ASK_CONCERN_LONG){
+      const t = v.trim();
+      if(t.length < 2) return false;
+
+      // 追記として積む（追質問後の入力を上書きしない）
+      const prev = (intake.concern.free_text || "").trim();
+      intake.concern.free_text = prev ? `${prev}\n\n【追記】\n${t}` : t;
+
+      // 生成に必要な情報量が足りない場合は advance() 側で止めて追質問する
+      if(intake.concern.free_text.replace(/\s/g,"").length < 30){
+        concernNeedsMore = true;
+      }else{
+        concernNeedsMore = false;
+      }
+    }
 
     intake.meta.updated_at = new Date().toISOString();
     saveIntake(intake);
@@ -544,6 +603,9 @@ function progressLinesFor(mode){
   }
 }
 
+function typingDotsHtml(){
+  return `<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+}
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function generateWithProgress(mode, intake){
@@ -567,6 +629,7 @@ async function generateWithProgress(mode, intake){
 
 /** ====== state advance ====== */
 async function advance(){
+  // user flow
   if(state===STATES.ASK_USER_BDAY){ state=STATES.ASK_USER_GENDER; ask(state); return; }
   if(state===STATES.ASK_USER_GENDER){ state=STATES.ASK_USER_BTIME; ask(state); return; }
   if(state===STATES.ASK_USER_BTIME){ state=STATES.ASK_USER_PREF; ask(state); return; }
@@ -582,6 +645,7 @@ async function advance(){
     state=STATES.ASK_PARTNER_BDAY; ask(state); return;
   }
 
+  // partner flow
   if(state===STATES.ASK_PARTNER_BDAY){ state=STATES.ASK_PARTNER_GENDER; ask(state); return; }
   if(state===STATES.ASK_PARTNER_GENDER){ state=STATES.ASK_PARTNER_PREF; ask(state); return; }
 
@@ -605,26 +669,41 @@ async function advance(){
     state=STATES.ASK_CONCERN_LONG; ask(state); return;
   }
 
+  // concern flow
   if(state===STATES.ASK_CONCERN_LONG){
     hideChoices();
+
+    // ★短文なら弾かずに追質問（自然）
+    if(concernNeedsMore){
+      concernFollowupCount += 1;
+      concernNeedsMore = false;
+
+      if(concernFollowupCount === 1){
+        pushBot("承りました。もう少しだけ状況が分かると精度が上がります。次の3点を短くで結構ですので追記くださいませ。");
+        pushBot("①直近の事実（いつ／何があった） ②いちばんの不安 ③理想（どうなりたい）");
+      }else{
+        // 2回目以降は軽めに
+        pushBot("ありがとうございます。最後に一点だけ。相手との接点（会う頻度／連絡頻度）を短く追記くださいませ。");
+      }
+      // stateは維持して再入力待ち
+      return;
+    }
+
+    // ここまで来たら無料生成へ
     pushBot("承りました。では、無料の鑑定をお渡しします。");
     const out = await generateWithProgress("free_report", intake);
 
-    // 出力保存（無料共有で使う）
     const outNorm = normalizeOut(out);
     saveLastFree({ intake, outNorm });
 
-    // 表示
     if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
 
-    // ★ここからが要件：無料後に3ボタンだけ見せる
+    // 無料後：480/980だけ表示（共有は出さない）
     state = STATES.DONE;
-    showAfterFree();
-    showPaidNoteIfNeeded();
+    showAfterFree(UI);
 
-    // bind（無料共有 / 480 / 980）
-    bindFreeActions(() => intake);
+    // bind 480/980
     bindPaidEntryActions(() => intake);
 
     pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
@@ -648,52 +727,15 @@ async function generate(mode, intake){
   return await res.json();
 }
 
-/** ====== actions binding ====== */
-function bindFreeActions(intakeRefGetter){
-  // 無料共有ボタン
-  bindClickAllById("btnFreeShare", async ()=>{
-    const last = loadLastFree();
-    if(!last){
-      pushBot("まだ無料レポートがありません。");
-      return;
-    }
-
-    pushBot("共有リンクを作成します…");
-    const res = await fetch("/api/share-create",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ format:last.format, content:last.content })
-    });
-
-    if(!res.ok){
-      pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
-      return;
-    }
-
-    const { token } = await res.json();
-    const url = `${location.origin}/share.html?token=${token}`;
-
-    if(navigator.share){
-      try{
-        await navigator.share({ title:"占いばあや｜無料レポート", url });
-        pushBot("共有しました。");
-        return;
-      }catch{ /* cancel */ }
-    }
-
-    await copyText(url);
-    pushBot("共有リンクをコピーしました。貼り付けて送れます。");
-  });
-}
-
+/** ====== paid actions binding ====== */
 function setPaidButtonsEnabled(enabled){
-  setEnabledById("btnPaid480", enabled);
-  setEnabledById("btnPaid980", enabled);
+  setEnabledEl(UI.btn480, enabled);
+  setEnabledEl(UI.btn980, enabled);
 }
 
 function bindPaidEntryActions(intakeRefGetter){
   // 480
-  bindClickAllById("btnPaid480", async ()=>{
+  bindClickEl(UI.btn480, async ()=>{
     try{
       setPaidButtonsEnabled(false);
       pushBot("承知しました。480円版（1週間の流れ）をお出しします…");
@@ -707,9 +749,8 @@ function bindPaidEntryActions(intakeRefGetter){
       if(outNorm.format==="html") pushBotHtml(outNorm.content);
       else pushBot(outNorm.content);
 
-      // ★有料後：utility を表示（480/980は出しっぱなし）
-      showAfterPaid();
-      showPaidNoteIfNeeded();
+      // 有料後：utility表示
+      showAfterPaid(UI);
       bindPaidUtilityActions();
 
     }catch(e){
@@ -721,7 +762,7 @@ function bindPaidEntryActions(intakeRefGetter){
   });
 
   // 980
-  bindClickAllById("btnPaid980", async ()=>{
+  bindClickEl(UI.btn980, async ()=>{
     try{
       setPaidButtonsEnabled(false);
       pushBot("承知しました。980円版（今後の運勢を詳しく）をお出しします…");
@@ -735,9 +776,8 @@ function bindPaidEntryActions(intakeRefGetter){
       if(outNorm.format==="html") pushBotHtml(outNorm.content);
       else pushBot(outNorm.content);
 
-      // ★有料後：utility を表示（480/980は出しっぱなし）
-      showAfterPaid();
-      showPaidNoteIfNeeded();
+      // 有料後：utility表示
+      showAfterPaid(UI);
       bindPaidUtilityActions();
 
     }catch(e){
@@ -751,7 +791,7 @@ function bindPaidEntryActions(intakeRefGetter){
 
 function bindPaidUtilityActions(){
   // 再表示
-  bindClickAllById("btnPaidShow", ()=>{
+  bindClickEl(UI.btnShow, ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
     pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
@@ -760,7 +800,7 @@ function bindPaidUtilityActions(){
   });
 
   // コピー
-  bindClickAllById("btnPaidCopy", async ()=>{
+  bindClickEl(UI.btnCopy, async ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
     const text = last.format==="html" ? htmlToText(last.content) : last.content;
@@ -769,7 +809,7 @@ function bindPaidUtilityActions(){
   });
 
   // PDF保存
-  bindClickAllById("btnPaidPdf", ()=>{
+  bindClickEl(UI.btnPdf, ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
     printAsPdf({
@@ -779,42 +819,14 @@ function bindPaidUtilityActions(){
     });
   });
 
-  // 共有
-  bindClickAllById("btnPaidShare", async ()=>{
-    const last = loadLastPaid();
-    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-
-    pushBot("共有リンクを作成します…");
-    const res = await fetch("/api/share-create",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ format:last.format, content:last.content })
-    });
-    if(!res.ok){
-      pushBot("申し訳ございません。共有リンクの作成に失敗しました。");
-      return;
-    }
-    const { token } = await res.json();
-    const url = `${location.origin}/share.html?token=${token}`;
-
-    if(navigator.share){
-      try{
-        await navigator.share({ title:"占いばあや｜有料レポート", url });
-        pushBot("共有しました。");
-        return;
-      }catch{ /* cancel */ }
-    }
-
-    await copyText(url);
-    pushBot("共有リンクをコピーしました。貼り付けて送れます。");
-  });
+  // 共有は廃止（何もしない）
+  if(UI.btnShare){
+    UI.btnShare.onclick = null;
+    setVisibleEl(UI.btnShare, false);
+  }
 }
 
 /** ====== chat rendering ====== */
-function typingDotsHtml(){
-  return `<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
-}
-
 function pushBot(text, opts = { html:false }){
   const id = crypto.randomUUID();
   const safe = opts.html ? text : escapeHtml(text);
@@ -832,11 +844,9 @@ function pushBot(text, opts = { html:false }){
   if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   return id;
 }
-
 function pushBotHtml(html){
   return pushBot(html, { html:true });
 }
-
 function pushUser(text){
   const id = crypto.randomUUID();
   chatEl?.insertAdjacentHTML("beforeend", `
@@ -847,7 +857,6 @@ function pushUser(text){
   if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   return id;
 }
-
 function removeMsgById(id){
   const el = chatEl?.querySelector(`[data-msg-id="${id}"]`);
   if(el) el.remove();
