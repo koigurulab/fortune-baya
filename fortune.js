@@ -1,14 +1,15 @@
-// fortune.js (FULL) — 2026-02
-// 要件反映
-// 1) 無料レポートが出るまで：アクションボタンは一切出さない
-// 2) 無料後：480/980 の2ボタンだけ表示（共有は出さない）
-// 3) 有料後：コピー/PDF/再表示を表示（480/980は出しっぱなし）※共有は出さない
-// 4) 相談文が短い場合：弾かずに追質問してから生成へ進める（自然な会話）
-// 5) HTMLでid重複があっても、最後のpaidActionsだけ採用（それ以外は非表示）
+// fortune.js (FULL) — 2026-02 (fixed)
+// Requirements
+// 1) Before free report: show NO action buttons
+// 2) After free: show ONLY 480/980 buttons (NO share)
+// 3) After paid: show Copy/PDF/Show buttons (+ 480/980 can stay) (NO share)
+// 4) If concern text is short: do NOT reject; ask follow-up, then generate
+// 5) If duplicate ids exist: adopt ONLY the last paidActions; hide others
 
 const STORAGE_KEY = "fortune_intake_v1_3";
 const FREE_LAST_KEY = "fortune_free_last_v1";
 const PAID_LAST_KEY = "fortune_paid_last_v1";
+const PAID_PENDING_KEY = "fortune_paid_pending_v1"; // for recovery
 
 function nowIso(){ return new Date().toISOString(); }
 
@@ -102,6 +103,20 @@ function loadLastPaid(){
   try{ return JSON.parse(s); }catch{ return null; }
 }
 
+function savePaidPending({ mode, intake }){
+  const payload = { mode, intake, createdAt: nowIso() };
+  localStorage.setItem(PAID_PENDING_KEY, JSON.stringify(payload));
+  return payload;
+}
+function loadPaidPending(){
+  const s = localStorage.getItem(PAID_PENDING_KEY);
+  if(!s) return null;
+  try{ return JSON.parse(s); }catch{ return null; }
+}
+function clearPaidPending(){
+  localStorage.removeItem(PAID_PENDING_KEY);
+}
+
 function htmlToText(html){
   const doc = new DOMParser().parseFromString(html, "text/html");
   return (doc.body?.innerText || "").trim();
@@ -149,22 +164,17 @@ function printAsPdf({ title, html, text }){
   w.document.close();
 }
 
-/** ====== UI show/hide policy ======
- * 無料前：freeActions / paidActions を全部非表示
- * 無料後：paidEntry(480/980)のみ表示
- * 有料後：paidUtility(コピー/PDF/再表示)表示、paidEntryは出しっぱなし
- * 共有：無料/有料ともに廃止（非表示）
- */
+/** ====== UI show/hide policy ====== */
+const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+
 function initActionBlocks(){
-  // HTMLでidが重複してるので、paidActionsは「最後の1つ」だけ採用し、それ以外は常に非表示
+  // Use only last paidActions, hide others
   hideAllButLastById("paidActions");
-  // freeActionsも今は使わない（共有廃止）
+  // freeActions is not used (share removed)
   setVisibleAllById("freeActions", false);
 
-  // paidActions（最後だけ）を握る
   const paidBox = lastById("paidActions");
 
-  // 中のボタン（最後のpaidActions配下にある前提。無い場合はidで最後を拾う）
   const btn480 = (paidBox && paidBox.querySelector("#btnPaid480")) || lastById("btnPaid480");
   const btn980 = (paidBox && paidBox.querySelector("#btnPaid980")) || lastById("btnPaid980");
   const btnCopy = (paidBox && paidBox.querySelector("#btnPaidCopy")) || lastById("btnPaidCopy");
@@ -173,63 +183,81 @@ function initActionBlocks(){
   const btnShare= (paidBox && paidBox.querySelector("#btnPaidShare"))|| lastById("btnPaidShare");
   const note    = (paidBox && paidBox.querySelector("#paidActionsNote")) || lastById("paidActionsNote");
 
-  // paid box自体を隠す（無料が出るまで）
+  // Hide everything initially
   setVisibleEl(paidBox, false);
-
-  // 念のため個別も隠す
   setVisibleEl(btn480, false);
   setVisibleEl(btn980, false);
   setVisibleEl(btnCopy, false);
   setVisibleEl(btnPdf,  false);
   setVisibleEl(btnShow, false);
-  setVisibleEl(btnShare,false); // 共有は常に消す
+  setVisibleEl(btnShare,false);
   setVisibleEl(note,    false);
 
-  // ボタン文言（薄い→具体化）
+  // Label
   if(btnCopy) btnCopy.textContent = "占い結果を文章としてコピー";
   if(btnPdf)  btnPdf.textContent  = "占い結果をPDF保存";
   if(btnShow) btnShow.textContent = "占い結果を再表示（内容は変わりません）";
+
+  // Share must never appear
+  if(btnShare){
+    btnShare.onclick = null;
+    setVisibleEl(btnShare, false);
+  }
 
   return { paidBox, btn480, btn980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
 
 function showAfterFree(ui){
-  // 無料後：paid entryのみ表示
+  // After free: show only 480/980
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
 
-  // 有料ユーティリティはまだ
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
   setVisibleEl(ui.btnShow, false);
 
-  // 共有は出さない
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
 }
 
 function showAfterPaid(ui){
-  // paid entryは出しっぱなし
+  // After paid: keep 480/980 + show utilities
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
 
-  // utilityを表示
   setVisibleEl(ui.btnCopy, true);
   setVisibleEl(ui.btnPdf,  true);
   setVisibleEl(ui.btnShow, true);
 
-  // 共有は出さない
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
 }
 
-const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
+// Determine action UI from storage at boot/reset
+function syncActionUIFromStorage(ui){
+  const hasFree = !!loadLastFree();
+  const hasPaid = !!loadLastPaid();
+  if(!hasFree){
+    initActionBlocks();
+    return;
+  }
+  if(hasFree && !hasPaid){
+    showAfterFree(ui);
+    bindPaidEntryActions(() => intake);
+    return;
+  }
+  // hasPaid
+  showAfterPaid(ui);
+  bindPaidEntryActions(() => intake);
+  bindPaidUtilityActions();
+}
 
-/** ====== BOTアイコン（任意）====== */
+/** ====== BOT avatar ====== */
 const BOT_AVATAR_URL = "/baya.png";
 
+/** ====== State machine ====== */
 const STATES = {
   ASK_USER_BDAY: "ASK_USER_BDAY",
   ASK_USER_GENDER: "ASK_USER_GENDER",
@@ -272,10 +300,11 @@ function newIntake(){
 let intake = loadIntake();
 let state = STATES.ASK_USER_BDAY;
 
-// 相談文が短い時の追質問制御
+// Concern follow-up
 let concernNeedsMore = false;
 let concernFollowupCount = 0;
 
+// DOM
 const chatEl = document.getElementById("chat");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
@@ -283,7 +312,7 @@ const resetBtn = document.getElementById("reset");
 const choicesEl = document.getElementById("choices");
 const choicesBodyEl = document.getElementById("choicesBody");
 
-// UI（paidActionsは最後の1つだけ掴む）
+// UI
 const UI = initActionBlocks();
 
 /** ====== composer ====== */
@@ -294,7 +323,7 @@ sendBtn?.addEventListener("click", async () => {
 });
 inputEl?.addEventListener("keydown", (e) => {
   if(e.key === "Enter"){
-    // 送信しない（textareaで改行のみ）
+    // textarea: keep newline behavior (no submit)
   }
 });
 inputEl?.addEventListener("input", () => {
@@ -307,6 +336,7 @@ resetBtn?.addEventListener("click", ()=>{
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(FREE_LAST_KEY);
   localStorage.removeItem(PAID_LAST_KEY);
+  localStorage.removeItem(PAID_PENDING_KEY);
 
   intake = newIntake();
   state = STATES.ASK_USER_BDAY;
@@ -315,16 +345,18 @@ resetBtn?.addEventListener("click", ()=>{
 
   if(chatEl) chatEl.innerHTML = "";
   hideChoices();
-  // アクション完全非表示へ
+
   initActionBlocks();
   boot();
 });
 
 /** ====== boot ====== */
 function boot(){
-  // 初期表示でボタンが一瞬見える問題は、JSだけだと完全撲滅が難しいため、
-  // ここで可能な限り早く非表示を強制します（HTML側で hidden 付与がベスト）。
+  // Hide action blocks ASAP
   initActionBlocks();
+  // Restore action state if user already has free/paid report stored
+  syncActionUIFromStorage(UI);
+
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
   ask(state);
 }
@@ -386,16 +418,13 @@ function renderChoicesFor(s){
     showChoices();
     const box = document.createElement("div");
     box.className = "picker";
-
     const input = document.createElement("input");
     input.type = "date";
-
     const ok = document.createElement("button");
     ok.type = "button";
     ok.className = "btn";
     ok.textContent = "決定";
     ok.onclick = () => { if(!input.value) return; handleAnswer(input.value); };
-
     box.appendChild(input);
     box.appendChild(ok);
     choicesBodyEl?.appendChild(box);
@@ -406,16 +435,13 @@ function renderChoicesFor(s){
     showChoices();
     const box = document.createElement("div");
     box.className = "picker";
-
     const input = document.createElement("input");
     input.type = "date";
-
     const ok = document.createElement("button");
     ok.type = "button";
     ok.className = "btn";
     ok.textContent = "決定";
     ok.onclick = () => { if(!input.value) return; handleAnswer(input.value); };
-
     box.appendChild(input);
     box.appendChild(ok);
     choicesBodyEl?.appendChild(box);
@@ -522,31 +548,15 @@ function applyAnswer(s, v){
     if(s===STATES.ASK_RELATION){ if(v.length<2) return false; intake.partner.relation = v; }
     if(s===STATES.ASK_RECENT_EVENT){ if(v.length<2) return false; intake.partner.recent_event = v; }
 
-    // 相談文：短いなら弾かずに通し、後で追質問フローへ
- if(s===STATES.ASK_CONCERN_LONG){
-  const t = v.trim();
-  if(t.length === 0) return false; // ← 1文字でも通す
+    // concern: accept even 1 character (only reject empty)
+    if(s===STATES.ASK_CONCERN_LONG){
+      const t = v.trim();
+      if(t.length === 0) return false;
 
-  const prev = (intake.concern.free_text || "").trim();
-  intake.concern.free_text = prev ? `${prev}\n\n【追記】\n${t}` : t;
-
-  if(intake.concern.free_text.replace(/\s/g,"").length < 30){
-    concernNeedsMore = true;
-  }else{
-    concernNeedsMore = false;
-  }
-}
-
-      // 追記として積む（追質問後の入力を上書きしない）
       const prev = (intake.concern.free_text || "").trim();
       intake.concern.free_text = prev ? `${prev}\n\n【追記】\n${t}` : t;
 
-      // 生成に必要な情報量が足りない場合は advance() 側で止めて追質問する
-      if(intake.concern.free_text.replace(/\s/g,"").length < 30){
-        concernNeedsMore = true;
-      }else{
-        concernNeedsMore = false;
-      }
+      concernNeedsMore = intake.concern.free_text.replace(/\s/g,"").length < 30;
     }
 
     intake.meta.updated_at = new Date().toISOString();
@@ -617,7 +627,7 @@ function typingDotsHtml(){
 }
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-async function generateWithProgress(mode, intake){
+async function generateWithProgress(mode, intakeObj){
   const lines = progressLinesFor(mode);
   const ids = [];
   for(let i=0;i<lines.length;i++){
@@ -627,7 +637,7 @@ async function generateWithProgress(mode, intake){
   }
 
   try{
-    const out = await generate(mode, intake);
+    const out = await generate(mode, intakeObj);
     ids.forEach(removeMsgById);
     return out;
   }catch(e){
@@ -682,7 +692,7 @@ async function advance(){
   if(state===STATES.ASK_CONCERN_LONG){
     hideChoices();
 
-    // ★短文なら弾かずに追質問（自然）
+    // If short: ask follow-up instead of generating
     if(concernNeedsMore){
       concernFollowupCount += 1;
       concernNeedsMore = false;
@@ -691,14 +701,12 @@ async function advance(){
         pushBot("承りました。もう少しだけ状況が分かると精度が上がります。次の3点を短くで結構ですので追記くださいませ。");
         pushBot("①直近の事実（いつ／何があった） ②いちばんの不安 ③理想（どうなりたい）");
       }else{
-        // 2回目以降は軽めに
         pushBot("ありがとうございます。最後に一点だけ。相手との接点（会う頻度／連絡頻度）を短く追記くださいませ。");
       }
-      // stateは維持して再入力待ち
       return;
     }
 
-    // ここまで来たら無料生成へ
+    // Generate free report
     pushBot("承りました。では、無料の鑑定をお渡しします。");
     const out = await generateWithProgress("free_report", intake);
 
@@ -708,11 +716,9 @@ async function advance(){
     if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
 
-    // 無料後：480/980だけ表示（共有は出さない）
+    // After free: show 480/980 only
     state = STATES.DONE;
     showAfterFree(UI);
-
-    // bind 480/980
     bindPaidEntryActions(() => intake);
 
     pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
@@ -721,11 +727,11 @@ async function advance(){
 }
 
 /** ====== API ====== */
-async function generate(mode, intake){
+async function generate(mode, intakeObj){
   const res = await fetch("/api/fortune-generate", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ mode, intake })
+    body:JSON.stringify({ mode, intake: intakeObj })
   });
 
   if(!res.ok){
@@ -750,15 +756,17 @@ function bindPaidEntryActions(intakeRefGetter){
       pushBot("承知しました。480円版（1週間の流れ）をお出しします…");
 
       const it = intakeRefGetter();
+      savePaidPending({ mode:"paid_480", intake: it });
+
       const out = await generateWithProgress("paid_480", it);
 
       const outNorm = normalizeOut(out);
       saveLastPaid({ mode:"paid_480", intake: it, outNorm });
+      clearPaidPending();
 
       if(outNorm.format==="html") pushBotHtml(outNorm.content);
       else pushBot(outNorm.content);
 
-      // 有料後：utility表示
       showAfterPaid(UI);
       bindPaidUtilityActions();
 
@@ -777,15 +785,17 @@ function bindPaidEntryActions(intakeRefGetter){
       pushBot("承知しました。980円版（今後の運勢を詳しく）をお出しします…");
 
       const it = intakeRefGetter();
+      savePaidPending({ mode:"paid_980", intake: it });
+
       const out = await generateWithProgress("paid_980", it);
 
       const outNorm = normalizeOut(out);
       saveLastPaid({ mode:"paid_980", intake: it, outNorm });
+      clearPaidPending();
 
       if(outNorm.format==="html") pushBotHtml(outNorm.content);
       else pushBot(outNorm.content);
 
-      // 有料後：utility表示
       showAfterPaid(UI);
       bindPaidUtilityActions();
 
@@ -799,16 +809,40 @@ function bindPaidEntryActions(intakeRefGetter){
 }
 
 function bindPaidUtilityActions(){
-  // 再表示
-  bindClickEl(UI.btnShow, ()=>{
+  // Show / re-show (recoverable)
+  bindClickEl(UI.btnShow, async ()=>{
     const last = loadLastPaid();
-    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
-    pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
-    if(last.format==="html") pushBotHtml(last.content);
-    else pushBot(last.content);
+    if(last){
+      pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
+      if(last.format==="html") pushBotHtml(last.content);
+      else pushBot(last.content);
+      return;
+    }
+
+    const pending = loadPaidPending();
+    if(!pending){
+      pushBot("まだ有料レポートがありません。");
+      return;
+    }
+
+    pushBot("前回の有料レポートを再生成します…");
+    try{
+      const out = await generateWithProgress(pending.mode, pending.intake);
+      const outNorm = normalizeOut(out);
+      saveLastPaid({ mode: pending.mode, intake: pending.intake, outNorm });
+      clearPaidPending();
+
+      if(outNorm.format==="html") pushBotHtml(outNorm.content);
+      else pushBot(outNorm.content);
+
+      showAfterPaid(UI);
+    }catch(e){
+      pushBot("申し訳ございません。再生成に失敗しました。");
+      console.error(e);
+    }
   });
 
-  // コピー
+  // Copy
   bindClickEl(UI.btnCopy, async ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
@@ -817,7 +851,7 @@ function bindPaidUtilityActions(){
     pushBot("コピーしました。");
   });
 
-  // PDF保存
+  // PDF
   bindClickEl(UI.btnPdf, ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
@@ -828,7 +862,7 @@ function bindPaidUtilityActions(){
     });
   });
 
-  // 共有は廃止（何もしない）
+  // Share removed
   if(UI.btnShare){
     UI.btnShare.onclick = null;
     setVisibleEl(UI.btnShare, false);
