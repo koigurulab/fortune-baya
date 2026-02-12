@@ -381,14 +381,64 @@ resetBtn?.addEventListener("click", ()=>{
   boot();
 });
 
+async function handleStripeReturnIfAny(){
+  const sp = new URLSearchParams(location.search);
+  const sessionId = sp.get("session_id");
+  if(!sessionId) return;
+
+  // session_id がある = Stripe成功戻り
+  pushBot("お支払いを確認しております…");
+
+  // 権利付与（サーバ側でKVに paid:ent を入れる）
+  const vr = await fetch(`/api/stripe-verify?session_id=${encodeURIComponent(sessionId)}`);
+  const vj = await vr.json().catch(()=> ({}));
+  if(!vr.ok || !vj.ok){
+    pushBot("申し訳ございません。決済確認に失敗しました。少し時間をおいて再度お試しくださいませ。");
+    return;
+  }
+
+  // 戻り後に自動生成するため、pending を使う（クリック前に保存してある想定）
+  const pending = loadPaidPending();
+  if(!pending){
+    pushBot("決済は確認できましたが、生成内容が特定できませんでした。480円／980円ボタンからもう一度お進みくださいませ。");
+    return;
+  }
+
+  try{
+    pushBot("承りました。鑑定を仕上げております…");
+    const out = await generateWithProgress(pending.mode, pending.intake);
+
+    const outNorm = normalizeOut(out);
+    saveLastPaid({ mode: pending.mode, intake: pending.intake, outNorm });
+    clearPaidPending();
+
+    if(outNorm.format==="html") pushBotHtml(outNorm.content);
+    else pushBot(outNorm.content);
+
+    showAfterPaid(UI);
+    bindPaidUtilityActions({ allowUpgradeButtons:true });
+
+    // URLの session_id を消す（リロードで再実行しないため）
+    history.replaceState({}, "", location.pathname);
+
+  }catch(e){
+    pushBot("申し訳ございません。有料レポートの生成に失敗しました。");
+    console.error(e);
+  }
+}
+
 /** ====== boot ====== */
-function boot(){
+async function boot(){
   // Hide action blocks ASAP
   initActionBlocks();
   // Restore action state if user already has paid report within 24h
   syncActionUIFromStorage(UI);
 
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
+
+  // ★Stripeから戻ってきた場合は、ここで verify → 自動生成
+  await handleStripeReturnIfAny();
+
   ask(state);
 }
 boot();
@@ -756,6 +806,16 @@ async function advance(){
     return;
   }
 }
+async function goCheckout(plan, intakeObj){
+  const r = await fetch("/api/stripe-create-checkout", {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ plan, intake: intakeObj }),
+  });
+  const j = await r.json().catch(()=> ({}));
+  if(!r.ok || !j.url) throw new Error(j?.error || "CHECKOUT_CREATE_FAILED");
+  location.href = j.url;
+}
 
 /** ====== API ====== */
 async function generate(mode, intakeObj){
@@ -780,58 +840,36 @@ function setPaidButtonsEnabled(enabled){
 }
 
 function bindPaidEntryActions(intakeRefGetter){
-  // 480
+  // 480 → Stripeへ
   bindClickEl(UI.btn480, async ()=>{
     try{
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。480円版（1週間の流れ）をお出しします…");
+      pushBot("承知しました。480円版の決済画面へご案内いたします…");
 
       const it = intakeRefGetter();
-      savePaidPending({ mode:"paid_480", intake: it });
-
-      const out = await generateWithProgress("paid_480", it);
-
-      const outNorm = normalizeOut(out);
-      saveLastPaid({ mode:"paid_480", intake: it, outNorm });
-      clearPaidPending();
-
-      if(outNorm.format==="html") pushBotHtml(outNorm.content);
-      else pushBot(outNorm.content);
-
-      showAfterPaid(UI);
-      bindPaidUtilityActions({ allowUpgradeButtons:true });
+      savePaidPending({ mode:"paid_480", intake: it }); // 戻ってきた後に自動生成するため
+      await goCheckout("480", it);
 
     }catch(e){
-      pushBot("申し訳ございません。480円版の生成に失敗しました。");
+      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
     }
   });
 
-  // 980
+  // 980 → Stripeへ
   bindClickEl(UI.btn980, async ()=>{
     try{
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。980円版（今後の運勢を詳しく）をお出しします…");
+      pushBot("承知しました。980円版の決済画面へご案内いたします…");
 
       const it = intakeRefGetter();
       savePaidPending({ mode:"paid_980", intake: it });
-
-      const out = await generateWithProgress("paid_980", it);
-
-      const outNorm = normalizeOut(out);
-      saveLastPaid({ mode:"paid_980", intake: it, outNorm });
-      clearPaidPending();
-
-      if(outNorm.format==="html") pushBotHtml(outNorm.content);
-      else pushBot(outNorm.content);
-
-      showAfterPaid(UI);
-      bindPaidUtilityActions({ allowUpgradeButtons:true });
+      await goCheckout("980", it);
 
     }catch(e){
-      pushBot("申し訳ございません。980円版の生成に失敗しました。");
+      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
