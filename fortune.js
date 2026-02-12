@@ -1,17 +1,27 @@
-// fortune.js (FULL) — 2026-02 (fixed)
+// fortune.js (FULL) — 2026-02 (fixed + paid 24h reshow-only boot)
 // Requirements
 // 1) Before free report: show NO action buttons
 // 2) After free: show ONLY 480/980 buttons (NO share)
 // 3) After paid: show Copy/PDF/Show buttons (+ 480/980 can stay) (NO share)
 // 4) If concern text is short: do NOT reject; ask follow-up, then generate
 // 5) If duplicate ids exist: adopt ONLY the last paidActions; hide others
+// 6) NEW: If user generated paid report within 24h and revisits, show ONLY "再表示" at boot.
+//    After free report completes again, show 480/980 as usual.
 
 const STORAGE_KEY = "fortune_intake_v1_3";
 const FREE_LAST_KEY = "fortune_free_last_v1";
 const PAID_LAST_KEY = "fortune_paid_last_v1";
 const PAID_PENDING_KEY = "fortune_paid_pending_v1"; // for recovery
 
+const TTL_PAID_MS = 24 * 60 * 60 * 1000; // 24h
+
 function nowIso(){ return new Date().toISOString(); }
+function isExpired(createdAtIso, ttlMs){
+  if(!createdAtIso) return true;
+  const t = Date.parse(createdAtIso);
+  if(Number.isNaN(t)) return true;
+  return (Date.now() - t) > ttlMs;
+}
 
 /** ====== DOM helper (duplicate id tolerant) ====== */
 function qsAllById(id){
@@ -100,7 +110,17 @@ function saveLastPaid({ mode, intake, outNorm }){
 function loadLastPaid(){
   const s = localStorage.getItem(PAID_LAST_KEY);
   if(!s) return null;
-  try{ return JSON.parse(s); }catch{ return null; }
+  try{
+    const p = JSON.parse(s);
+    // paid TTL (24h)
+    if(isExpired(p?.createdAt, TTL_PAID_MS)){
+      localStorage.removeItem(PAID_LAST_KEY);
+      return null;
+    }
+    return p;
+  }catch{
+    return null;
+  }
 }
 
 function savePaidPending({ mode, intake }){
@@ -235,23 +255,34 @@ function showAfterPaid(ui){
   setVisibleEl(ui.note, DEV_PAID);
 }
 
+// NEW: paid revisit mode → show ONLY "再表示"
+function showReshowOnly(ui){
+  setVisibleEl(ui.paidBox, true);
+
+  setVisibleEl(ui.btnShow, true);
+
+  setVisibleEl(ui.btn480, false);
+  setVisibleEl(ui.btn980, false);
+  setVisibleEl(ui.btnCopy, false);
+  setVisibleEl(ui.btnPdf,  false);
+
+  setVisibleEl(ui.btnShare, false);
+  setVisibleEl(ui.note, false);
+}
+
 // Determine action UI from storage at boot/reset
 function syncActionUIFromStorage(ui){
-  const hasFree = !!loadLastFree();
   const hasPaid = !!loadLastPaid();
-  if(!hasFree){
-    initActionBlocks();
+
+  // ★有料が24h以内に残っている → “再表示だけ”を初期表示
+  if(hasPaid){
+    showReshowOnly(ui);
+    bindPaidUtilityActions({ allowUpgradeButtons:false });
     return;
   }
-  if(hasFree && !hasPaid){
-    showAfterFree(ui);
-    bindPaidEntryActions(() => intake);
-    return;
-  }
-  // hasPaid
-  showAfterPaid(ui);
-  bindPaidEntryActions(() => intake);
-  bindPaidUtilityActions();
+
+  // それ以外は通常どおり。無料も有料も無い想定ではボタン無し。
+  initActionBlocks();
 }
 
 /** ====== BOT avatar ====== */
@@ -354,7 +385,7 @@ resetBtn?.addEventListener("click", ()=>{
 function boot(){
   // Hide action blocks ASAP
   initActionBlocks();
-  // Restore action state if user already has free/paid report stored
+  // Restore action state if user already has paid report within 24h
   syncActionUIFromStorage(UI);
 
   pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
@@ -768,7 +799,7 @@ function bindPaidEntryActions(intakeRefGetter){
       else pushBot(outNorm.content);
 
       showAfterPaid(UI);
-      bindPaidUtilityActions();
+      bindPaidUtilityActions({ allowUpgradeButtons:true });
 
     }catch(e){
       pushBot("申し訳ございません。480円版の生成に失敗しました。");
@@ -797,7 +828,7 @@ function bindPaidEntryActions(intakeRefGetter){
       else pushBot(outNorm.content);
 
       showAfterPaid(UI);
-      bindPaidUtilityActions();
+      bindPaidUtilityActions({ allowUpgradeButtons:true });
 
     }catch(e){
       pushBot("申し訳ございません。980円版の生成に失敗しました。");
@@ -808,7 +839,8 @@ function bindPaidEntryActions(intakeRefGetter){
   });
 }
 
-function bindPaidUtilityActions(){
+// opts.allowUpgradeButtons=false → reshow-only mode keeps UI minimal
+function bindPaidUtilityActions(opts = { allowUpgradeButtons:true }){
   // Show / re-show (recoverable)
   bindClickEl(UI.btnShow, async ()=>{
     const last = loadLastPaid();
@@ -816,6 +848,11 @@ function bindPaidUtilityActions(){
       pushBot(`前回の有料レポート（${last.mode}）を再表示します。`);
       if(last.format==="html") pushBotHtml(last.content);
       else pushBot(last.content);
+
+      // IMPORTANT: keep UI state
+      if(opts.allowUpgradeButtons) showAfterPaid(UI);
+      else showReshowOnly(UI);
+
       return;
     }
 
@@ -835,7 +872,9 @@ function bindPaidUtilityActions(){
       if(outNorm.format==="html") pushBotHtml(outNorm.content);
       else pushBot(outNorm.content);
 
-      showAfterPaid(UI);
+      if(opts.allowUpgradeButtons) showAfterPaid(UI);
+      else showReshowOnly(UI);
+
     }catch(e){
       pushBot("申し訳ございません。再生成に失敗しました。");
       console.error(e);
