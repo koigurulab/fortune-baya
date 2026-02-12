@@ -32,6 +32,9 @@
       color:var(--ink);
     }
 
+    /* 汎用非表示（JSが is-hidden を付ける前提） */
+    .is-hidden{ display:none!important; }
+
     .wrap{
       max-width:760px;
       margin:0 auto;
@@ -261,7 +264,7 @@
       cursor:pointer;
     }
 
-    /* paid */
+    /* ===== paid actions ===== */
     .paid-actions{
       border:1px solid var(--line);
       border-radius:14px;
@@ -303,47 +306,33 @@
     </header>
 
     <section id="chat" class="chat"></section>
-    <!-- free report actions（無料レポート出力後に表示） -->
-<div id="freeActions" class="is-hidden">
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-    <button id="btnFreeShare" class="btn secondary">無料レポートを共有</button>
-    <!-- 余裕があれば（任意） -->
-    <!-- <button id="btnFreeCopy" class="btn secondary">コピー</button> -->
-    <!-- <button id="btnFreePdf"  class="btn secondary">PDF保存</button> -->
-    <!-- <button id="btnFreeShow" class="btn secondary">再表示</button> -->
-  </div>
-</div>
 
     <section id="choices" class="choices is-hidden">
       <div class="choices__hint">選択肢を押すか、下の自由入力でも回答できます。</div>
       <div id="choicesBody"></div>
     </section>
 
+    <!-- ★ paidActions はこれ1つだけ（重複禁止） -->
     <section id="paidActions" class="paid-actions is-hidden">
       <div class="paid-actions__title">有料レポート</div>
+
+      <!-- 無料レポート後：ここ（480/980）のみ表示 -->
       <div class="paid-actions__row">
-        <button id="btnPaid480" class="paid-actions__btn paid-actions__btn--primary">480円版を出す（テスト）</button>
-        <button id="btnPaid980" class="paid-actions__btn">980円版を出す（テスト）</button>
+        <button id="btnPaid480" class="paid-actions__btn paid-actions__btn--primary">480円版を出す</button>
+        <button id="btnPaid980" class="paid-actions__btn">980円版を出す</button>
       </div>
-      <div id="paidActionsNote" class="paid-actions__note is-hidden">※テスト中：決済なしで生成しています</div>
+
+      <!-- 有料レポート生成後：ここ（Copy/PDF/再表示）を表示 -->
+      <div class="paid-actions__row">
+        <button id="btnPaidCopy" class="paid-actions__btn">コピー</button>
+        <button id="btnPaidPdf"  class="paid-actions__btn">PDF保存</button>
+        <button id="btnPaidShow" class="paid-actions__btn">再表示</button>
+      </div>
+
+      <div id="paidActionsNote" class="paid-actions__note is-hidden">
+        dev_paid=1: 決済をスキップして直接生成します
+      </div>
     </section>
-    <!-- 例：fortune.html のどこか（チャット下） -->
-<div id="paidActions" class="is-hidden">
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-    <button id="btnPaid480" class="btn">480円版を出す</button>
-    <button id="btnPaid980" class="btn">980円版を出す</button>
-  </div>
-
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-    <button id="btnPaidCopy" class="btn secondary">コピー</button>
-    <button id="btnPaidPdf" class="btn secondary">PDF保存</button>
-    <button id="btnPaidShow" class="btn secondary">再表示</button>
-  </div>
-
-  <div id="paidActionsNote" class="is-hidden" style="margin-top:8px; font-size:12px; opacity:.7;">
-    dev_paid=1: 決済をスキップして直接生成します
-  </div>
-</div>
 
     <!-- ★ Enter/改行で送信されないよう textarea + 送信ボタン click のみ -->
     <div class="composer">
