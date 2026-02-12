@@ -196,7 +196,6 @@ function initActionBlocks(){
 function showAfterFree(ui){
   // 無料後：paid entryのみ表示
   setVisibleEl(ui.paidBox, true);
-  setой; // (intentional no-op safeguard)
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
 
@@ -524,9 +523,19 @@ function applyAnswer(s, v){
     if(s===STATES.ASK_RECENT_EVENT){ if(v.length<2) return false; intake.partner.recent_event = v; }
 
     // 相談文：短いなら弾かずに通し、後で追質問フローへ
-    if(s===STATES.ASK_CONCERN_LONG){
-      const t = v.trim();
-      if(t.length < 2) return false;
+ if(s===STATES.ASK_CONCERN_LONG){
+  const t = v.trim();
+  if(t.length === 0) return false; // ← 1文字でも通す
+
+  const prev = (intake.concern.free_text || "").trim();
+  intake.concern.free_text = prev ? `${prev}\n\n【追記】\n${t}` : t;
+
+  if(intake.concern.free_text.replace(/\s/g,"").length < 30){
+    concernNeedsMore = true;
+  }else{
+    concernNeedsMore = false;
+  }
+}
 
       // 追記として積む（追質問後の入力を上書きしない）
       const prev = (intake.concern.free_text || "").trim();
