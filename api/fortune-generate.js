@@ -42,11 +42,10 @@ export default async function handler(req, res) {
       const cacheKey = `free:cache:${cacheSig}`;
       const cached = await kvGet(cacheKey);
       if (cached) {
-        // キャッシュは「成功結果」なので失敗ノーカウント条件も満たす
         return res.status(200).json({ html: cached, format: "html", cached: true });
       }
 
-      // 1日2回（ユーザー識別は sessionHash を主、ipHash を副でもOK）
+      // 1日2回（ユーザー識別は sessionHash を主）
       const countKey = `free:count:${day}:${ids.sessionHash}`;
       const countRaw = await kvGet(countKey);
       const count = countRaw ? Number(countRaw) : 0;
@@ -61,33 +60,56 @@ export default async function handler(req, res) {
       // ---- 生成（成功したらだけカウント） ----
       const out = await generateFortune({ mode, intake, req });
 
-      // 成功扱い：out に内容があること（あなたの normalizeModelOutput に合わせて調整）
-      const html = out?.html || (out?.format === "html" ? out?.content : null);
-      const text = out?.text || (out?.format !== "html" ? out?.content : null);
-
-      // あなたのフロントは html を期待しているので、ここは既存仕様に合わせる
       const finalHtml = out?.html ?? out?.content ?? "";
       if (!finalHtml) {
-        // 失敗：ノーカウント
         return res.status(500).json({ error: "Empty output" });
       }
 
-      // カウント + キャッシュ（例：24hキャッシュ。あなたの要件なら 12h でもOK）
+      // カウント + キャッシュ
       const newCount = await kvIncr(countKey);
-      if (newCount === 1) await kvExpire(countKey, 60 * 60 * 26); // ざっくり「明日まで」保険
+      if (newCount === 1) await kvExpire(countKey, 60 * 60 * 26);
       await kvSet(cacheKey, finalHtml, { ex: 60 * 60 * 24 });
 
       return res.status(200).json({ html: finalHtml, cached: false });
     }
 
-    // ---- 2) mini / paid：ここは今まで通り生成（必要なら別枠の制限も追加） ----
+    // ---- 2) paid は「支払い権利」チェックを挟む（重要） ----
+    if (mode === "paid_480" || mode === "paid_980") {
+      const entRaw = await kvGet(`paid:ent:${ids.sessionHash}`);
+      if (!entRaw) {
+        return res.status(402).json({
+          error: "PAYMENT_REQUIRED",
+          message: "お支払いが確認できませんでした。決済後にもう一度お試しくださいませ。",
+        });
+      }
+
+      let ent;
+      try { ent = JSON.parse(entRaw); } catch { ent = null; }
+
+      const planNeed = (mode === "paid_480") ? "480" : "980";
+      if (!ent || String(ent.plan) !== planNeed) {
+        return res.status(403).json({
+          error: "PLAN_MISMATCH",
+          message: "購入プランと生成内容が一致しませんでした。",
+        });
+      }
+    }
+
+    // ---- 3) mini / paid：生成 ----
     const out = await generateFortune({ mode, intake, req });
 
     // あなたの既存返却仕様に合わせる
-    if (out.format === "html") return res.status(200).json({ html: out.content });
-    return res.status(200).json({ text: out.content });
+    if (out?.format === "html") return res.status(200).json({ html: out.content });
+    if (out?.html) return res.status(200).json({ html: out.html });
+    if (out?.text) return res.status(200).json({ text: out.text });
+
+    return res.status(200).json({ text: String(out?.content ?? "") });
   } catch (err) {
     console.error(err);
+    // RATE_LIMITED を 429 に
+    if (err?.status === 429) {
+      return res.status(429).json({ error: "RATE_LIMITED" });
+    }
     return res.status(500).json({ error: "FUNCTION_INVOCATION_FAILED" });
   }
 }
