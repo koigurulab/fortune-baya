@@ -229,7 +229,20 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  return { paidBox, btn480, btn980, btnCopy, btnPdf, btnShow, btnShare, note };
+  // Dev-only: 1980円版テストボタン（dev_paid=1 のときだけ動的注入）
+  let btn1980 = null;
+  if(DEV_PAID && paidBox){
+    btn1980 = document.createElement("button");
+    btn1980.id = "btnPaid1980";
+    btn1980.className = "paid-actions__btn";
+    btn1980.style.cssText = "border:2px dashed rgba(124,110,230,.6);background:rgba(124,110,230,.12);";
+    btn1980.textContent = "1980円版テスト（dev）";
+    const row = paidBox.querySelector(".paid-actions__row");
+    if(row) row.appendChild(btn1980);
+    setVisibleEl(btn1980, false);
+  }
+
+  return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
 
 function showAfterFree(ui){
@@ -244,6 +257,9 @@ function showAfterFree(ui){
 
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
+
+  // Dev-only: 1980円版ボタン表示
+  if(ui.btn1980) setVisibleEl(ui.btn1980, DEV_PAID);
 }
 
 function showAfterPaid(ui){
@@ -258,6 +274,9 @@ function showAfterPaid(ui){
 
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
+
+  // Dev-only: 1980円版ボタン維持
+  if(ui.btn1980) setVisibleEl(ui.btn1980, DEV_PAID);
 }
 
 // NEW: paid revisit mode → show ONLY "再表示"
@@ -700,6 +719,16 @@ function progressLinesFor(mode){
         "破綻を避ける線引きと、攻め筋を同時に整えています…",
         "決断に使えるレベルまで、鑑定を仕上げますね…"
       ];
+    case "paid_1980":
+      return [
+        "ご縁の全体像を、場面ごとに読み解いております…",
+        "あなた様の恋愛パターンを命式から辿っています…",
+        "お相手様の深層心理を丁寧に見立てております…",
+        "3つの道（動く・待つ・離れる）のシナリオを組み立てています…",
+        "1ヶ月の流れと禁じ手を整えております…",
+        "LINEテンプレと処方箋を最終仕上げしております…",
+        "全解読版、まもなくお渡しいたします…"
+      ];
     default:
       return [
         "少々お待ちくださいませ…",
@@ -849,6 +878,7 @@ async function generate(mode, intakeObj){
 function setPaidButtonsEnabled(enabled){
   setEnabledEl(UI.btn480, enabled);
   setEnabledEl(UI.btn980, enabled);
+  if(UI.btn1980) setEnabledEl(UI.btn1980, enabled);
 }
 
 function bindPaidEntryActions(intakeRefGetter){
@@ -889,6 +919,34 @@ function bindPaidEntryActions(intakeRefGetter){
       setPaidButtonsEnabled(true);
     }
   });
+
+  // 1980 → dev_paid=1 のときのみ（Stripeスキップ・直接生成）
+  if(UI.btn1980){
+    bindClickEl(UI.btn1980, async ()=>{
+      try{
+        setPaidButtonsEnabled(false);
+        pushBot("[DEV] 1980円・全解読版の鑑定を開始します（決済スキップ）…");
+
+        const it = intakeRefGetter();
+        const out = await generateWithProgress("paid_1980", it);
+
+        const outNorm = normalizeOut(out);
+        saveLastPaid({ mode:"paid_1980", intake: it, outNorm });
+
+        if(outNorm.format==="html") pushBotHtml(outNorm.content);
+        else pushBot(outNorm.content);
+
+        showAfterPaid(UI);
+        bindPaidUtilityActions({ allowUpgradeButtons:true });
+
+      }catch(e){
+        pushBot("[DEV] 1980円版の生成に失敗しました: " + (e.message||e));
+        console.error(e);
+      }finally{
+        setPaidButtonsEnabled(true);
+      }
+    });
+  }
 }
 
 // opts.allowUpgradeButtons=false → reshow-only mode keeps UI minimal
