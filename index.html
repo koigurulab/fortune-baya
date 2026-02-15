@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>占いばあや｜四柱推命で相性診断</title>
   <meta name="description" content="生年月日と関係性を入れるだけで、相性と運勢を読み解き、あなた様がこの１週間どうするべきかを鑑定します。まずは無料で。">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-66KV4YQZ7N"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-66KV4YQZ7N');
+  </script>
   <style>
     :root{
       /* ====== 色（ゲーミング感を抑えた“夜×和”） ====== */
@@ -399,9 +407,14 @@
    */
   const CHAT_PATH = "fortune.html";
 
+  // GA4: view_lp
+  if(typeof gtag === "function") gtag("event", "view_lp");
+
   document.querySelectorAll(".js-start").forEach(a=>{
     a.addEventListener("click", (e)=>{
       e.preventDefault();
+      // GA4: start_free
+      if(typeof gtag === "function") gtag("event", "start_free");
       window.location.href = CHAT_PATH;
     });
   });
