@@ -8,6 +8,11 @@
 // 6) NEW: If user generated paid report within 24h and revisits, show ONLY "再表示" at boot.
 //    After free report completes again, show 480/980 as usual.
 
+/** GA4 tracking helper — safe no-op when gtag is blocked or not loaded */
+function track(event, params){
+  if(typeof window.gtag === "function") window.gtag("event", event, params);
+}
+
 const STORAGE_KEY = "fortune_intake_v1_3";
 const FREE_LAST_KEY = "fortune_free_last_v1";
 const PAID_LAST_KEY = "fortune_paid_last_v1";
@@ -415,6 +420,8 @@ async function handleStripeReturnIfAny(){
     if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
 
+    track("view_result_paid", { plan: pending.mode });
+
     showAfterPaid(UI);
     bindPaidUtilityActions({ allowUpgradeButtons:true });
 
@@ -423,6 +430,7 @@ async function handleStripeReturnIfAny(){
 
   }catch(e){
     pushBot("申し訳ございません。有料レポートの生成に失敗しました。");
+    track("error_generate", { mode: pending?.mode || "paid", error_type: "paid_generate_failed" });
     console.error(e);
   }
 }
@@ -788,6 +796,7 @@ async function advance(){
     }
 
     // Generate free report
+    track("submit_form");
     pushBot("承りました。では、無料の鑑定をお渡しします。");
     const out = await generateWithProgress("free_report", intake);
 
@@ -796,6 +805,8 @@ async function advance(){
 
     if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
+
+    track("view_result_free");
 
     // After free: show 480/980 only
     state = STATES.DONE;
@@ -807,6 +818,7 @@ async function advance(){
   }
 }
 async function goCheckout(plan, intakeObj){
+  track("begin_checkout", { plan: plan });
   const r = await fetch("/api/stripe-create-checkout", {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -843,6 +855,7 @@ function bindPaidEntryActions(intakeRefGetter){
   // 480 → Stripeへ
   bindClickEl(UI.btn480, async ()=>{
     try{
+      track("click_upgrade", { plan: "paid_480" });
       setPaidButtonsEnabled(false);
       pushBot("承知しました。480円版の決済画面へご案内いたします…");
 
@@ -861,6 +874,7 @@ function bindPaidEntryActions(intakeRefGetter){
   // 980 → Stripeへ
   bindClickEl(UI.btn980, async ()=>{
     try{
+      track("click_upgrade", { plan: "paid_980" });
       setPaidButtonsEnabled(false);
       pushBot("承知しました。980円版の決済画面へご案内いたします…");
 
@@ -923,6 +937,7 @@ function bindPaidUtilityActions(opts = { allowUpgradeButtons:true }){
   bindClickEl(UI.btnCopy, async ()=>{
     const last = loadLastPaid();
     if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    track("copy_click", { report_type: "paid" });
     const text = last.format==="html" ? htmlToText(last.content) : last.content;
     await copyText(text);
     pushBot("コピーしました。");
