@@ -229,18 +229,9 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  // Dev-only: 1980円版テストボタン（dev_paid=1 のときだけ動的注入）
-  let btn1980 = null;
-  if(DEV_PAID && paidBox){
-    btn1980 = document.createElement("button");
-    btn1980.id = "btnPaid1980";
-    btn1980.className = "paid-actions__btn";
-    btn1980.style.cssText = "border:2px dashed rgba(124,110,230,.6);background:rgba(124,110,230,.12);";
-    btn1980.textContent = "1980円版テスト（dev）";
-    const row = paidBox.querySelector(".paid-actions__row");
-    if(row) row.appendChild(btn1980);
-    setVisibleEl(btn1980, false);
-  }
+  // 1980円版テストボタン（HTMLに存在するが常時hidden、dev_paid=1 のときだけ表示される）
+  const btn1980 = (paidBox && paidBox.querySelector("#btnPaid1980")) || lastById("btnPaid1980");
+  setVisibleEl(btn1980, false);
 
   return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
