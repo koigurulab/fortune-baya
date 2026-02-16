@@ -190,6 +190,7 @@ function printAsPdf({ title, html, text }){
 }
 
 /** ====== UI show/hide policy ====== */
+const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
 
 function initActionBlocks(){
   // Use only last paidActions, hide others
@@ -246,7 +247,7 @@ function showAfterFree(ui){
   setVisibleEl(ui.btnShow, false);
 
   setVisibleEl(ui.btnShare, false);
-  setVisibleEl(ui.note, false);
+  setVisibleEl(ui.note, DEV_PAID);
 }
 
 function showAfterPaid(ui){
@@ -261,7 +262,7 @@ function showAfterPaid(ui){
   setVisibleEl(ui.btnShow, true);
 
   setVisibleEl(ui.btnShare, false);
-  setVisibleEl(ui.note, false);
+  setVisibleEl(ui.note, DEV_PAID);
 }
 
 // NEW: paid revisit mode → show ONLY "再表示"
@@ -905,19 +906,33 @@ function bindPaidEntryActions(intakeRefGetter){
     }
   });
 
-  // 1980 → Stripeへ
+  // 1980 → Stripe or dev bypass
   bindClickEl(UI.btn1980, async ()=>{
     try{
       track("click_upgrade", { plan: "paid_1980" });
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。1980円版の決済画面へご案内いたします…");
-
       const it = intakeRefGetter();
-      savePaidPending({ mode:"paid_1980", intake: it });
-      await goCheckout("1980", it);
+
+      if(DEV_PAID){
+        // dev bypass: 決済スキップで直接生成
+        pushBot("[DEV] 1980円・全解読版の鑑定を開始します（決済スキップ）…");
+        const out = await generateWithProgress("paid_1980", it);
+        const outNorm = normalizeOut(out);
+        saveLastPaid({ mode:"paid_1980", intake: it, outNorm });
+        if(outNorm.format==="html") pushBotHtml(outNorm.content);
+        else pushBot(outNorm.content);
+        showAfterPaid(UI);
+        bindPaidUtilityActions({ allowUpgradeButtons:true });
+      }else{
+        pushBot("承知しました。1980円版の決済画面へご案内いたします…");
+        savePaidPending({ mode:"paid_1980", intake: it });
+        await goCheckout("1980", it);
+      }
 
     }catch(e){
-      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      pushBot(DEV_PAID
+        ? "[DEV] 1980円版の生成に失敗しました: " + (e.message||e)
+        : "申し訳ございません。決済画面の作成に失敗しました。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
