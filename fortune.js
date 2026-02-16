@@ -229,11 +229,26 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  // 1980円版テストボタン（HTMLに存在するが常時hidden、dev_paid=1 のときだけ表示される）
-  const btn1980 = (paidBox && paidBox.querySelector("#btnPaid1980")) || lastById("btnPaid1980");
-  setVisibleEl(btn1980, false);
+  return { paidBox, btn480, btn980, btn1980: null, btnCopy, btnPdf, btnShow, btnShare, note };
+}
 
-  return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
+// Dev-only: 1980ボタンを必要な瞬間に生成して挿入する（initActionBlocks多重呼び出し問題を回避）
+function ensureDevBtn1980(ui){
+  if(!DEV_PAID) return;
+  // 既に存在していれば何もしない
+  const existing = document.getElementById("btnPaid1980");
+  if(existing){ ui.btn1980 = existing; return; }
+  // 挿入先（480/980と同じrow）
+  const row = ui.btn980 && ui.btn980.parentNode;
+  if(!row) return;
+  const btn = document.createElement("button");
+  btn.id = "btnPaid1980";
+  btn.className = "paid-actions__btn";
+  btn.style.border = "2px dashed rgba(124,110,230,.6)";
+  btn.style.background = "rgba(124,110,230,.12)";
+  btn.textContent = "1980円版テスト（dev）";
+  row.appendChild(btn);
+  ui.btn1980 = btn;
 }
 
 function showAfterFree(ui){
@@ -249,8 +264,8 @@ function showAfterFree(ui){
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
 
-  // Dev-only: 1980円版ボタン表示
-  if(ui.btn1980) setVisibleEl(ui.btn1980, DEV_PAID);
+  // Dev-only: 1980円版ボタン（この瞬間に生成・挿入）
+  ensureDevBtn1980(ui);
 }
 
 function showAfterPaid(ui){
@@ -267,7 +282,7 @@ function showAfterPaid(ui){
   setVisibleEl(ui.note, DEV_PAID);
 
   // Dev-only: 1980円版ボタン維持
-  if(ui.btn1980) setVisibleEl(ui.btn1980, DEV_PAID);
+  ensureDevBtn1980(ui);
 }
 
 // NEW: paid revisit mode → show ONLY "再表示"
