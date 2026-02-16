@@ -25,14 +25,13 @@ export default async function handler(req, res) {
     }
 
     const { plan, intake } = body || {};
-    if (!plan || !["480", "980"].includes(String(plan))) {
-      return res.status(400).json({ error: "plan must be 480 or 980" });
+    if (!plan || !["480", "980", "1980"].includes(String(plan))) {
+      return res.status(400).json({ error: "plan must be 480, 980, or 1980" });
     }
 
     // priceId はサーバー側で選ぶ（フロントに渡す必要なし）
-    const priceId = plan === "480"
-      ? mustEnv("STRIPE_PRICE_480")
-      : mustEnv("STRIPE_PRICE_980");
+    const PRICE_ENV = { "480": "STRIPE_PRICE_480", "980": "STRIPE_PRICE_980", "1980": "STRIPE_PRICE_1980" };
+    const priceId = mustEnv(PRICE_ENV[String(plan)]);
 
     // ユーザー識別（あなたの仕組みに合わせる）
     const ids = clientIds(req, intake || {});

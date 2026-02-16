@@ -190,7 +190,6 @@ function printAsPdf({ title, html, text }){
 }
 
 /** ====== UI show/hide policy ====== */
-const DEV_PAID = new URLSearchParams(location.search).get("dev_paid") === "1";
 
 function initActionBlocks(){
   // Use only last paidActions, hide others
@@ -202,6 +201,7 @@ function initActionBlocks(){
 
   const btn480 = (paidBox && paidBox.querySelector("#btnPaid480")) || lastById("btnPaid480");
   const btn980 = (paidBox && paidBox.querySelector("#btnPaid980")) || lastById("btnPaid980");
+  const btn1980 = (paidBox && paidBox.querySelector("#btnPaid1980")) || lastById("btnPaid1980");
   const btnCopy = (paidBox && paidBox.querySelector("#btnPaidCopy")) || lastById("btnPaidCopy");
   const btnPdf  = (paidBox && paidBox.querySelector("#btnPaidPdf"))  || lastById("btnPaidPdf");
   const btnShow = (paidBox && paidBox.querySelector("#btnPaidShow")) || lastById("btnPaidShow");
@@ -212,6 +212,7 @@ function initActionBlocks(){
   setVisibleEl(paidBox, false);
   setVisibleEl(btn480, false);
   setVisibleEl(btn980, false);
+  setVisibleEl(btn1980, false);
   setVisibleEl(btnCopy, false);
   setVisibleEl(btnPdf,  false);
   setVisibleEl(btnShow, false);
@@ -229,60 +230,38 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  return { paidBox, btn480, btn980, btn1980: null, btnCopy, btnPdf, btnShow, btnShare, note };
+  return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
 
-// Dev-only: 1980ボタンを必要な瞬間に生成して挿入する（initActionBlocks多重呼び出し問題を回避）
-function ensureDevBtn1980(ui){
-  if(!DEV_PAID) return;
-  // 既に存在していれば何もしない
-  const existing = document.getElementById("btnPaid1980");
-  if(existing){ ui.btn1980 = existing; return; }
-  // 挿入先（480/980と同じrow）
-  const row = ui.btn980 && ui.btn980.parentNode;
-  if(!row) return;
-  const btn = document.createElement("button");
-  btn.id = "btnPaid1980";
-  btn.className = "paid-actions__btn";
-  btn.style.border = "2px dashed rgba(124,110,230,.6)";
-  btn.style.background = "rgba(124,110,230,.12)";
-  btn.textContent = "1980円版テスト（dev）";
-  row.appendChild(btn);
-  ui.btn1980 = btn;
-}
 
 function showAfterFree(ui){
-  // After free: show only 480/980
+  // After free: show 480/980/1980
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
+  setVisibleEl(ui.btn1980, true);
 
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
   setVisibleEl(ui.btnShow, false);
 
   setVisibleEl(ui.btnShare, false);
-  setVisibleEl(ui.note, DEV_PAID);
-
-  // Dev-only: 1980円版ボタン（この瞬間に生成・挿入）
-  ensureDevBtn1980(ui);
+  setVisibleEl(ui.note, false);
 }
 
 function showAfterPaid(ui){
-  // After paid: keep 480/980 + show utilities
+  // After paid: keep 480/980/1980 + show utilities
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
+  setVisibleEl(ui.btn1980, true);
 
   setVisibleEl(ui.btnCopy, true);
   setVisibleEl(ui.btnPdf,  true);
   setVisibleEl(ui.btnShow, true);
 
   setVisibleEl(ui.btnShare, false);
-  setVisibleEl(ui.note, DEV_PAID);
-
-  // Dev-only: 1980円版ボタン維持
-  ensureDevBtn1980(ui);
+  setVisibleEl(ui.note, false);
 }
 
 // NEW: paid revisit mode → show ONLY "再表示"
@@ -884,7 +863,7 @@ async function generate(mode, intakeObj){
 function setPaidButtonsEnabled(enabled){
   setEnabledEl(UI.btn480, enabled);
   setEnabledEl(UI.btn980, enabled);
-  if(UI.btn1980) setEnabledEl(UI.btn1980, enabled);
+  setEnabledEl(UI.btn1980, enabled);
 }
 
 function bindPaidEntryActions(intakeRefGetter){
@@ -926,33 +905,24 @@ function bindPaidEntryActions(intakeRefGetter){
     }
   });
 
-  // 1980 → dev_paid=1 のときのみ（Stripeスキップ・直接生成）
-  if(UI.btn1980){
-    bindClickEl(UI.btn1980, async ()=>{
-      try{
-        setPaidButtonsEnabled(false);
-        pushBot("[DEV] 1980円・全解読版の鑑定を開始します（決済スキップ）…");
+  // 1980 → Stripeへ
+  bindClickEl(UI.btn1980, async ()=>{
+    try{
+      track("click_upgrade", { plan: "paid_1980" });
+      setPaidButtonsEnabled(false);
+      pushBot("承知しました。1980円版の決済画面へご案内いたします…");
 
-        const it = intakeRefGetter();
-        const out = await generateWithProgress("paid_1980", it);
+      const it = intakeRefGetter();
+      savePaidPending({ mode:"paid_1980", intake: it });
+      await goCheckout("1980", it);
 
-        const outNorm = normalizeOut(out);
-        saveLastPaid({ mode:"paid_1980", intake: it, outNorm });
-
-        if(outNorm.format==="html") pushBotHtml(outNorm.content);
-        else pushBot(outNorm.content);
-
-        showAfterPaid(UI);
-        bindPaidUtilityActions({ allowUpgradeButtons:true });
-
-      }catch(e){
-        pushBot("[DEV] 1980円版の生成に失敗しました: " + (e.message||e));
-        console.error(e);
-      }finally{
-        setPaidButtonsEnabled(true);
-      }
-    });
-  }
+    }catch(e){
+      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      console.error(e);
+    }finally{
+      setPaidButtonsEnabled(true);
+    }
+  });
 }
 
 // opts.allowUpgradeButtons=false → reshow-only mode keeps UI minimal
