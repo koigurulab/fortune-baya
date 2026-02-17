@@ -145,6 +145,9 @@
 
     /* ===== Plans ===== */
     .plans{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+    .plans__paid{display:flex;gap:10px;}
+    .plans__paid .plan{flex:1;min-width:0;}
+    @media(max-width:600px){.plans__paid{flex-direction:column;}}
     .plan{
       border:1px solid var(--line);border-radius:12px;padding:16px;
       background:rgba(255,255,255,.02);position:relative;
@@ -285,33 +288,51 @@
           </ul>
         </div>
 
-        <div class="plan plan--pop">
-          <div class="plan__tag">人気</div>
-          <div class="plan__hd">
-            <div class="plan__nm">今週の整え版</div>
-            <div class="plan__pr">&yen;480</div>
-          </div>
-          <ul class="plan__ul">
-            <li>無料の全内容</li>
-            <li>相性を具体場面で深掘り</li>
-            <li>今週の一手を1つに決め切り</li>
-            <li>コピペで使えるLINEテンプレ</li>
-            <li>禁じ手2つ</li>
-          </ul>
-        </div>
+        <div class="plans__paid">
 
-        <div class="plan">
-          <div class="plan__hd">
-            <div class="plan__nm">実践版</div>
-            <div class="plan__pr">&yen;980</div>
+          <div class="plan">
+            <div class="plan__hd">
+              <div class="plan__nm">今週の整え版</div>
+              <div class="plan__pr">&yen;480</div>
+            </div>
+            <ul class="plan__ul">
+              <li>無料の全内容</li>
+              <li>相性を具体場面で深掘り</li>
+              <li>今週の一手を1つに決め切り</li>
+              <li>コピペで使えるLINEテンプレ</li>
+              <li>禁じ手2つ</li>
+            </ul>
           </div>
-          <ul class="plan__ul">
-            <li>480円の全内容</li>
-            <li>1ヶ月の週別ロードマップ</li>
-            <li>相手の本音が出やすい瞬間3つ</li>
-            <li>分岐点2つと見極めサイン</li>
-            <li>避けるべき落とし穴3つ</li>
-          </ul>
+
+          <div class="plan plan--pop">
+            <div class="plan__tag">人気</div>
+            <div class="plan__hd">
+              <div class="plan__nm">実践版</div>
+              <div class="plan__pr">&yen;980</div>
+            </div>
+            <ul class="plan__ul">
+              <li>480円の全内容</li>
+              <li>1ヶ月の週別ロードマップ</li>
+              <li>相手の本音が出やすい瞬間3つ</li>
+              <li>分岐点2つと見極めサイン</li>
+              <li>避けるべき落とし穴3つ</li>
+            </ul>
+          </div>
+
+          <div class="plan">
+            <div class="plan__hd">
+              <div class="plan__nm">全解読版</div>
+              <div class="plan__pr">&yen;1980</div>
+            </div>
+            <ul class="plan__ul">
+              <li>980円の全内容</li>
+              <li>命式を完全解読（五行・十神）</li>
+              <li>相性の根本原因と変え方</li>
+              <li>向こう3ヶ月の展開と転機</li>
+              <li>関係を動かす決定的アクション</li>
+            </ul>
+          </div>
+
         </div>
 
       </div>
