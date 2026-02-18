@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     }
 
     // ---- 2) paid は「支払い権利」チェックを挟む（重要） ----
-    if (mode === "paid_480" || mode === "paid_980") {
+    if (mode === "paid_480" || mode === "paid_980" || mode === "paid_1980") {
       const entRaw = await kvGet(`paid:ent:${ids.sessionHash}`);
       if (!entRaw) {
         return res.status(402).json({
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       let ent;
       try { ent = JSON.parse(entRaw); } catch { ent = null; }
 
-      const planNeed = (mode === "paid_480") ? "480" : "980";
+      const planNeed = (mode === "paid_480") ? "480" : (mode === "paid_980") ? "980" : "1980";
       if (!ent || String(ent.plan) !== planNeed) {
         return res.status(403).json({
           error: "PLAN_MISMATCH",
