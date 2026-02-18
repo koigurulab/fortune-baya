@@ -202,6 +202,7 @@ function initActionBlocks(){
 
   const btn480 = (paidBox && paidBox.querySelector("#btnPaid480")) || lastById("btnPaid480");
   const btn980 = (paidBox && paidBox.querySelector("#btnPaid980")) || lastById("btnPaid980");
+  const btn1980 = (paidBox && paidBox.querySelector("#btnPaid1980")) || lastById("btnPaid1980");
   const btnCopy = (paidBox && paidBox.querySelector("#btnPaidCopy")) || lastById("btnPaidCopy");
   const btnPdf  = (paidBox && paidBox.querySelector("#btnPaidPdf"))  || lastById("btnPaidPdf");
   const btnShow = (paidBox && paidBox.querySelector("#btnPaidShow")) || lastById("btnPaidShow");
@@ -212,6 +213,7 @@ function initActionBlocks(){
   setVisibleEl(paidBox, false);
   setVisibleEl(btn480, false);
   setVisibleEl(btn980, false);
+  setVisibleEl(btn1980, false);
   setVisibleEl(btnCopy, false);
   setVisibleEl(btnPdf,  false);
   setVisibleEl(btnShow, false);
@@ -229,14 +231,15 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  return { paidBox, btn480, btn980, btnCopy, btnPdf, btnShow, btnShare, note };
+  return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
 
 function showAfterFree(ui){
-  // After free: show only 480/980
+  // After free: show only 480/980/1980
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
+  setVisibleEl(ui.btn1980, true);
 
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
@@ -247,10 +250,11 @@ function showAfterFree(ui){
 }
 
 function showAfterPaid(ui){
-  // After paid: keep 480/980 + show utilities
+  // After paid: keep 480/980/1980 + show utilities
   setVisibleEl(ui.paidBox, true);
   setVisibleEl(ui.btn480, true);
   setVisibleEl(ui.btn980, true);
+  setVisibleEl(ui.btn1980, true);
 
   setVisibleEl(ui.btnCopy, true);
   setVisibleEl(ui.btnPdf,  true);
@@ -268,6 +272,7 @@ function showReshowOnly(ui){
 
   setVisibleEl(ui.btn480, false);
   setVisibleEl(ui.btn980, false);
+  setVisibleEl(ui.btn1980, false);
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
 
@@ -700,6 +705,14 @@ function progressLinesFor(mode){
         "破綻を避ける線引きと、攻め筋を同時に整えています…",
         "決断に使えるレベルまで、鑑定を仕上げますね…"
       ];
+    case "paid_1980":
+      return [
+        "命式を完全に解き明かしております…",
+        "あなた様と相手様の十神配置から、根本の読みを組み立てています…",
+        "3ヶ月の運勢の流れと転機を丁寧に見ています…",
+        "関係を動かす決定的なアクションと言葉を整えています…",
+        "深い読みから、真の選択肢が見えてまいります…"
+      ];
     default:
       return [
         "少々お待ちくださいませ…",
@@ -849,6 +862,7 @@ async function generate(mode, intakeObj){
 function setPaidButtonsEnabled(enabled){
   setEnabledEl(UI.btn480, enabled);
   setEnabledEl(UI.btn980, enabled);
+  setEnabledEl(UI.btn1980, enabled);
 }
 
 function bindPaidEntryActions(intakeRefGetter){
@@ -881,6 +895,25 @@ function bindPaidEntryActions(intakeRefGetter){
       const it = intakeRefGetter();
       savePaidPending({ mode:"paid_980", intake: it });
       await goCheckout("980", it);
+
+    }catch(e){
+      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      console.error(e);
+    }finally{
+      setPaidButtonsEnabled(true);
+    }
+  });
+
+  // 1980 → Stripeへ
+  bindClickEl(UI.btn1980, async ()=>{
+    try{
+      track("click_upgrade", { plan: "paid_1980" });
+      setPaidButtonsEnabled(false);
+      pushBot("承知しました。1980円版の決済画面へご案内いたします…");
+
+      const it = intakeRefGetter();
+      savePaidPending({ mode:"paid_1980", intake: it });
+      await goCheckout("1980", it);
 
     }catch(e){
       pushBot("申し訳ございません。決済画面の作成に失敗しました。");
