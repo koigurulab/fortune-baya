@@ -313,12 +313,25 @@
 }
     .paid-actions__note{ color:var(--muted); font-size:12px; }
 
-    /* ===== progress bar ===== */
-    .progress-wrap{
-      height:3px;background:rgba(255,255,255,.07);
-      border-radius:999px;overflow:hidden;margin-top:-6px;
+    /* ===== progress hint（下部）===== */
+    .progress-hint{
+      padding:10px 14px 8px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(255,255,255,.02);
     }
-    .progress-bar{
+    .progress-hint.is-hidden{ display:none!important; }
+    .ph-text{
+      font-size:12px;color:#9ca3af;
+      text-align:center;margin-bottom:7px;
+      line-height:1.5;
+    }
+    .ph-text strong{ color:#c4b5fd; font-weight:900; }
+    .ph-bar-wrap{
+      height:4px;background:rgba(255,255,255,.08);
+      border-radius:999px;overflow:hidden;
+    }
+    .ph-bar-fill{
       height:100%;
       background:linear-gradient(90deg,var(--accent),#a78bfa);
       border-radius:999px;
@@ -341,6 +354,50 @@
     .cb-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a78bfa);border-radius:999px;transition:width .9s ease;}
     .cb-score-num{font-weight:900;font-size:14px;white-space:nowrap;color:#c4b5fd;}
     .cb-phrase{font-size:13px;color:#d1d5db;text-align:center;font-style:italic;}
+
+    /* ===== plan cards in chat ===== */
+    .pc-list{ display:flex;flex-direction:column;gap:10px; }
+    .pc{
+      border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;background:rgba(255,255,255,.02);
+    }
+    .pc--pop{
+      border-color:rgba(124,58,237,.45);
+      background:rgba(124,58,237,.07);
+    }
+    .pc__tag{
+      font-size:11px;font-weight:900;color:#c4b5fd;
+      margin-bottom:6px;letter-spacing:.06em;
+    }
+    .pc__pitch{
+      font-size:12px;color:#a78bfa;font-weight:700;
+      margin-bottom:10px;line-height:1.5;
+    }
+    .pc__hd{
+      display:flex;justify-content:space-between;align-items:baseline;
+      margin-bottom:10px;
+    }
+    .pc__nm{ font-weight:900;font-size:15px; }
+    .pc__pr{ font-weight:900;font-size:17px;color:#c4b5fd; }
+    .pc__ul{
+      list-style:none;padding:0;margin:0 0 12px;
+      display:flex;flex-direction:column;gap:5px;
+    }
+    .pc__ul li{
+      font-size:13px;color:rgba(229,231,235,.75);
+      padding-left:18px;position:relative;line-height:1.5;
+    }
+    .pc__ul li::before{ content:"✓";position:absolute;left:0;color:#a78bfa;font-weight:700; }
+    .pc__cta{
+      width:100%;padding:11px;border-radius:12px;
+      font-size:14px;font-weight:900;cursor:pointer;
+      border:1px solid rgba(124,58,237,.5);
+    }
+    .pc--pop .pc__cta{
+      background:linear-gradient(135deg,var(--accent),#6d28d9);
+      border-color:transparent;
+      box-shadow:0 8px 20px rgba(124,58,237,.3);
+    }
 
     /* ===== summary badge（吉・凶・一手）===== */
     .summary-badge{display:flex;flex-direction:column;gap:8px;}
@@ -369,9 +426,6 @@
       <div class="title">占いばあやの鑑定</div>
       <div style="width:42px;"></div>
     </header>
-    <div class="progress-wrap">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
 
     <section id="chat" class="chat"></section>
 
@@ -380,22 +434,78 @@
       <div id="choicesBody"></div>
     </section>
 
+    <!-- ★ 進捗ヒント（下部・入力中のみ表示） -->
+    <div id="progressHint" class="progress-hint is-hidden">
+      <div class="ph-text" id="progressHintText">情報を入力中...</div>
+      <div class="ph-bar-wrap">
+        <div class="ph-bar-fill" id="progressBar"></div>
+      </div>
+    </div>
+
     <!-- ★ paidActions はこれ1つだけ（重複禁止） -->
     <section id="paidActions" class="paid-actions is-hidden">
-      <div class="paid-actions__title">有料レポート</div>
+      <div class="paid-actions__title">有料版でさらに深く読みます</div>
 
-      <!-- 無料レポート後：ここ（480/980/1980）のみ表示 -->
-      <div class="paid-actions__row">
-        <button id="btnPaid480" class="paid-actions__btn paid-actions__btn--primary">今夜の一手を決める（¥480）</button>
-        <button id="btnPaid980" class="paid-actions__btn">1ヶ月の道筋を見る（¥980）🔥人気</button>
-        <button id="btnPaid1980" class="paid-actions__btn">命式を全解読する（¥1,980）</button>
+      <!-- プランカード（無料レポート後に表示） -->
+      <div id="pcList" class="pc-list">
+
+        <!-- 980：おすすめ -->
+        <div class="pc pc--pop">
+          <div class="pc__tag">🔥 おすすめ</div>
+          <div class="pc__pitch">「来月まで迷わずに済む、道筋がここにある」</div>
+          <div class="pc__hd">
+            <span class="pc__nm">実践版</span>
+            <span class="pc__pr">¥980</span>
+          </div>
+          <ul class="pc__ul">
+            <li>1ヶ月の週別ロードマップ</li>
+            <li>相手の本音が出やすい瞬間3つ</li>
+            <li>分岐点2つと見極めサイン</li>
+            <li>避けるべき落とし穴3つ</li>
+            <li>コピペで使えるLINEテンプレ</li>
+          </ul>
+          <button id="btnPaid980" class="paid-actions__btn pc__cta">1ヶ月の道筋を見る（¥980）</button>
+        </div>
+
+        <!-- 480 compact -->
+        <div class="pc">
+          <div class="pc__pitch">「今夜の返信を1つに決める」</div>
+          <div class="pc__hd">
+            <span class="pc__nm">今週の整え版</span>
+            <span class="pc__pr">¥480</span>
+          </div>
+          <ul class="pc__ul">
+            <li>今週の一手を1つに決め切り</li>
+            <li>コピペで使えるLINEテンプレ</li>
+            <li>禁じ手2つ</li>
+          </ul>
+          <button id="btnPaid480" class="paid-actions__btn pc__cta">今夜の一手を決める（¥480）</button>
+        </div>
+
+        <!-- 1980 compact -->
+        <div class="pc">
+          <div class="pc__pitch">「なぜこの人なのか、ついに分かる」</div>
+          <div class="pc__hd">
+            <span class="pc__nm">全解読版</span>
+            <span class="pc__pr">¥1,980</span>
+          </div>
+          <ul class="pc__ul">
+            <li>命式を完全解読（五行・十神）</li>
+            <li>相性の根本原因と変え方</li>
+            <li>向こう3ヶ月の展開と転機</li>
+            <li>関係を動かす決定的アクション</li>
+          </ul>
+          <button id="btnPaid1980" class="paid-actions__btn pc__cta">命式を全解読する（¥1,980）</button>
+        </div>
+
       </div>
 
-      <!-- 有料レポート生成後：ここ（Copy/PDF/再表示）を表示 -->
+      <!-- 有料レポート生成後：Copy/PDF/再表示 -->
       <div class="paid-actions__row">
         <button id="btnPaidCopy" class="paid-actions__btn">コピー</button>
         <button id="btnPaidPdf"  class="paid-actions__btn">PDF保存</button>
         <button id="btnPaidShow" class="paid-actions__btn">再表示</button>
+        <button id="btnPaidShare" class="paid-actions__btn" style="display:none"></button>
       </div>
 
       <div id="paidActionsNote" class="paid-actions__note is-hidden">

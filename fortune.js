@@ -199,6 +199,7 @@ function initActionBlocks(){
   setVisibleAllById("freeActions", false);
 
   const paidBox = lastById("paidActions");
+  const pcList  = (paidBox && paidBox.querySelector("#pcList")) || lastById("pcList");
 
   const btn480 = (paidBox && paidBox.querySelector("#btnPaid480")) || lastById("btnPaid480");
   const btn980 = (paidBox && paidBox.querySelector("#btnPaid980")) || lastById("btnPaid980");
@@ -211,9 +212,7 @@ function initActionBlocks(){
 
   // Hide everything initially
   setVisibleEl(paidBox, false);
-  setVisibleEl(btn480, false);
-  setVisibleEl(btn980, false);
-  setVisibleEl(btn1980, false);
+  setVisibleEl(pcList,  false); // プランカード群をまとめて制御
   setVisibleEl(btnCopy, false);
   setVisibleEl(btnPdf,  false);
   setVisibleEl(btnShow, false);
@@ -231,51 +230,41 @@ function initActionBlocks(){
     setVisibleEl(btnShare, false);
   }
 
-  return { paidBox, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
+  return { paidBox, pcList, btn480, btn980, btn1980, btnCopy, btnPdf, btnShow, btnShare, note };
 }
 
 function showAfterFree(ui){
-  // After free: show only 480/980/1980
+  // After free: show plan cards only
   setVisibleEl(ui.paidBox, true);
-  setVisibleEl(ui.btn480, true);
-  setVisibleEl(ui.btn980, true);
-  setVisibleEl(ui.btn1980, true);
+  setVisibleEl(ui.pcList,  true); // プランカード表示
 
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
   setVisibleEl(ui.btnShow, false);
-
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
 }
 
 function showAfterPaid(ui){
-  // After paid: keep 480/980/1980 + show utilities
+  // After paid: keep plan cards + show utilities
   setVisibleEl(ui.paidBox, true);
-  setVisibleEl(ui.btn480, true);
-  setVisibleEl(ui.btn980, true);
-  setVisibleEl(ui.btn1980, true);
+  setVisibleEl(ui.pcList,  true); // プランカード残す（別プランへの誘導）
 
   setVisibleEl(ui.btnCopy, true);
   setVisibleEl(ui.btnPdf,  true);
   setVisibleEl(ui.btnShow, true);
-
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, DEV_PAID);
 }
 
-// NEW: paid revisit mode → show ONLY "再表示"
+// paid revisit mode → show ONLY "再表示"
 function showReshowOnly(ui){
   setVisibleEl(ui.paidBox, true);
+  setVisibleEl(ui.pcList,  false); // カードは非表示
 
   setVisibleEl(ui.btnShow, true);
-
-  setVisibleEl(ui.btn480, false);
-  setVisibleEl(ui.btn980, false);
-  setVisibleEl(ui.btn1980, false);
   setVisibleEl(ui.btnCopy, false);
   setVisibleEl(ui.btnPdf,  false);
-
   setVisibleEl(ui.btnShare, false);
   setVisibleEl(ui.note, false);
 }
@@ -1149,7 +1138,7 @@ function pushSummaryBadge(summary){
   pushBotHtml(`<div class="summary-badge">${rows}</div>`);
 }
 
-/** ====== 進捗バー ====== */
+/** ====== 進捗バー（下部・ざっくり文言）====== */
 const STEP_PROGRESS = {
   ASK_USER_BDAY: 5,
   ASK_USER_GENDER: 14,
@@ -1168,10 +1157,40 @@ const STEP_PROGRESS = {
   DONE: 100,
 };
 
+// ざっくり進捗フェーズ別テキスト
+const PROGRESS_HINT_TEXT = {
+  ASK_USER_BDAY:         "情報を入力中...",
+  ASK_USER_GENDER:       "情報を入力中...",
+  ASK_USER_BTIME:        "情報を入力中...",
+  ASK_USER_PREF:         "情報を入力中...",
+  ASK_USER_MBTI:         "あなたの気質を読んでいます...",
+  ASK_PARTNER_BDAY:      "お相手の情報を入力中...",
+  ASK_PARTNER_GENDER:    "お相手の情報を入力中...",
+  ASK_PARTNER_PREF:      "お相手の情報を入力中...",
+  ASK_PARTNER_AGE_RANGE: "お相手の情報を入力中...",
+  ASK_PARTNER_BTIME:     "お相手の情報を入力中...",
+  ASK_PARTNER_MBTI:      "お相手の気配を辿っています...",
+  ASK_RELATION:          "<strong>もうすぐです</strong> — 関係性を教えてください",
+  ASK_RECENT_EVENT:      "<strong>もうすぐです</strong> — 直近の出来事を教えてください",
+  ASK_CONCERN_LONG:      "<strong>あと1つで無料鑑定がはじまります</strong>",
+};
+
 function updateProgress(s){
-  const pct = STEP_PROGRESS[s] ?? 0;
-  const bar = document.getElementById("progressBar");
+  const pct     = STEP_PROGRESS[s] ?? 0;
+  const hintTxt = PROGRESS_HINT_TEXT[s] ?? null;
+
+  const bar     = document.getElementById("progressBar");
+  const hint    = document.getElementById("progressHint");
+  const hintEl  = document.getElementById("progressHintText");
+
   if(bar) bar.style.width = `${pct}%`;
+
+  if(s === "DONE" || !hintTxt){
+    setVisibleEl(hint, false);
+    return;
+  }
+  setVisibleEl(hint, true);
+  if(hintEl) hintEl.innerHTML = hintTxt;
 }
 
 /** ====== 五行クライアント算出（deriveElements.js と同ロジック）====== */
