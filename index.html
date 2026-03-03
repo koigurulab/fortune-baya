@@ -189,6 +189,45 @@
       background:linear-gradient(transparent,rgba(7,10,16,.92) 28%);
     }
     .disc{text-align:center;font-size:11px;color:var(--muted2);margin-top:8px;line-height:1.6;}
+
+    /* ===== Result preview card ===== */
+    .result-preview{background:rgba(124,110,230,.07);border:1px solid rgba(124,110,230,.22);border-radius:14px;padding:20px;margin-top:16px;}
+    .rp-elems{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+    .rp-elem{font-weight:900;font-size:15px;letter-spacing:.02em;}
+    .rp-arrow{color:var(--muted2);font-size:13px;}
+    .rp-score-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+    .rp-score-lbl{font-size:12px;color:var(--muted2);white-space:nowrap;}
+    .rp-bar{flex:1;height:7px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;}
+    .rp-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;}
+    .rp-score-num{font-weight:900;font-size:14px;white-space:nowrap;color:var(--accent2);}
+    .rp-phrase{text-align:center;font-size:14px;color:var(--muted);font-style:italic;margin-bottom:12px;}
+    .rp-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+    .rp-tag{font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;}
+    .rp-good{background:rgba(74,222,128,.10);border:1px solid rgba(74,222,128,.28);color:#86efac;}
+    .rp-bad{background:rgba(248,113,113,.09);border:1px solid rgba(248,113,113,.22);color:#fca5a5;}
+    .rp-note{font-size:11px;color:var(--muted2);text-align:center;margin-top:12px;line-height:1.6;}
+
+    /* ===== Reviews ===== */
+    .reviews{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+    .review{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+    .review__stars{color:var(--accent2);font-size:13px;margin-bottom:6px;letter-spacing:.08em;}
+    .review__body{font-size:13px;line-height:1.75;color:rgba(231,229,228,.82);margin-bottom:6px;}
+    .review__meta{font-size:11px;color:var(--muted2);}
+
+    /* ===== Plan pitch / alt ===== */
+    .plan__pitch{font-size:12px;color:var(--accent2);font-weight:700;margin-bottom:10px;line-height:1.5;}
+    .plan-alt{margin-top:0;}
+    .plan-alt__sum{
+      list-style:none;font-size:13px;font-weight:700;color:var(--muted);
+      cursor:pointer;text-align:center;padding:10px;
+      border:1px dashed rgba(255,255,255,.12);border-radius:12px;
+      transition:color .2s;
+    }
+    .plan-alt__sum::-webkit-details-marker{display:none;}
+    .plan-alt[open] .plan-alt__sum{color:var(--accent2);}
+    .plan-alt__body{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
+    .plan-alt__body .plan{flex:1;min-width:0;}
+    @media(max-width:420px){.plan-alt__body{flex-direction:column;}}
   </style>
 </head>
 <body>
@@ -246,25 +285,24 @@
 
     <!-- ===== Sample ===== -->
     <section class="sec">
-      <div class="sec__title">出力イメージ</div>
-      <div class="chat-box">
-        <div class="chat-lbl">チャット形式で鑑定</div>
-
-        <div class="c-row is-u">
-          <div class="c-b is-u">彼との相性を見てほしいです。私が重いのか、相性なのか知りたいです。</div>
+      <div class="sec__title">こんな結果が出ます</div>
+      <div class="result-preview">
+        <div class="rp-elems">
+          <span class="rp-elem">🔥火×⚡金</span>
+          <span class="rp-arrow">←相性→</span>
+          <span class="rp-elem">💧水×🌿木</span>
         </div>
-
-        <div class="c-row">
-          <div class="c-av"><img src="/baya.png" alt=""></div>
-          <div class="c-b is-bot">相性そのものは悪くはございません。ただ、五行の温度差が出やすい縁です。あなた様の火の気と、お相手様の水の気の調整が要所になります。</div>
+        <div class="rp-score-row">
+          <span class="rp-score-lbl">相性スコア</span>
+          <div class="rp-bar"><div class="rp-bar-fill" style="width:72%"></div></div>
+          <span class="rp-score-num">72点</span>
         </div>
-
-        <div class="c-row">
-          <div class="c-av"><img src="/baya.png" alt=""></div>
-          <div class="c-b is-bot"><strong>【今週の一手】</strong><br>追いかける形は火が強く出やすいので、用件を1つに絞り、短く整えて一度だけLINEしてみましょう。</div>
+        <div class="rp-phrase">「温度差のある縁。でも、深まれる。」</div>
+        <div class="rp-tags">
+          <span class="rp-tag rp-good">吉 ── 待ちが効く週</span>
+          <span class="rp-tag rp-bad">凶 ── 追いすぎる</span>
         </div>
-
-        <div class="chat-note">※ 実際の鑑定ではもう少し詳しくお伝えします</div>
+        <div class="rp-note">※ 実際の結果はあなたの生年月日と状況に合わせて生成されます</div>
       </div>
     </section>
 
@@ -276,67 +314,96 @@
       <div class="sec__title">無料でできること、有料で増える価値</div>
       <div class="plans">
 
+        <!-- 無料 -->
         <div class="plan">
           <div class="plan__hd">
             <div class="plan__nm">無料</div>
             <div class="plan__pr">&yen;0</div>
           </div>
           <ul class="plan__ul">
+            <li>相性スコア＋五行バランス</li>
             <li>相性の概要と結論</li>
-            <li>五行バランスの解説</li>
             <li>今週の流れと分岐点</li>
           </ul>
         </div>
 
-        <div class="plans__paid">
-
-          <div class="plan">
-            <div class="plan__hd">
-              <div class="plan__nm">今週の整え版</div>
-              <div class="plan__pr">&yen;480</div>
-            </div>
-            <ul class="plan__ul">
-              <li>無料の全内容</li>
-              <li>相性を具体場面で深掘り</li>
-              <li>今週の一手を1つに決め切り</li>
-              <li>コピペで使えるLINEテンプレ</li>
-              <li>禁じ手2つ</li>
-            </ul>
+        <!-- 980：常時展開 -->
+        <div class="plan plan--pop">
+          <div class="plan__tag">人気</div>
+          <div class="plan__pitch">「来月まで迷わずに済む、道筋がここにある」</div>
+          <div class="plan__hd">
+            <div class="plan__nm">実践版</div>
+            <div class="plan__pr">&yen;980</div>
           </div>
-
-          <div class="plan plan--pop">
-            <div class="plan__tag">人気</div>
-            <div class="plan__hd">
-              <div class="plan__nm">実践版</div>
-              <div class="plan__pr">&yen;980</div>
-            </div>
-            <ul class="plan__ul">
-              <li>480円の全内容</li>
-              <li>1ヶ月の週別ロードマップ</li>
-              <li>相手の本音が出やすい瞬間3つ</li>
-              <li>分岐点2つと見極めサイン</li>
-              <li>避けるべき落とし穴3つ</li>
-            </ul>
-          </div>
-
-          <div class="plan">
-            <div class="plan__hd">
-              <div class="plan__nm">全解読版</div>
-              <div class="plan__pr">&yen;1980</div>
-            </div>
-            <ul class="plan__ul">
-              <li>980円の全内容</li>
-              <li>命式を完全解読（五行・十神）</li>
-              <li>相性の根本原因と変え方</li>
-              <li>向こう3ヶ月の展開と転機</li>
-              <li>関係を動かす決定的アクション</li>
-            </ul>
-          </div>
-
+          <ul class="plan__ul">
+            <li>1ヶ月の週別ロードマップ</li>
+            <li>相手の本音が出やすい瞬間3つ</li>
+            <li>分岐点2つと見極めサイン</li>
+            <li>避けるべき落とし穴3つ</li>
+            <li>コピペで使えるLINEテンプレ</li>
+          </ul>
         </div>
+
+        <!-- 480 と 1980：折りたたみ -->
+        <details class="plan-alt">
+          <summary class="plan-alt__sum">他のプランも見る（¥480 / ¥1,980）</summary>
+          <div class="plan-alt__body">
+
+            <div class="plan">
+              <div class="plan__pitch">「今夜の返信を1つに決める」</div>
+              <div class="plan__hd">
+                <div class="plan__nm">今週の整え版</div>
+                <div class="plan__pr">&yen;480</div>
+              </div>
+              <ul class="plan__ul">
+                <li>相性を具体場面で深掘り</li>
+                <li>今週の一手を1つに決め切り</li>
+                <li>コピペで使えるLINEテンプレ</li>
+                <li>禁じ手2つ</li>
+              </ul>
+            </div>
+
+            <div class="plan">
+              <div class="plan__pitch">「なぜこの人なのか、ついに分かる」</div>
+              <div class="plan__hd">
+                <div class="plan__nm">全解読版</div>
+                <div class="plan__pr">&yen;1,980</div>
+              </div>
+              <ul class="plan__ul">
+                <li>命式を完全解読（五行・十神）</li>
+                <li>相性の根本原因と変え方</li>
+                <li>向こう3ヶ月の展開と転機</li>
+                <li>関係を動かす決定的アクション</li>
+              </ul>
+            </div>
+
+          </div>
+        </details>
 
       </div>
       <div class="plans__note">※ 有料は無料鑑定のあとに選べます。勝手に課金されることはありません。</div>
+    </section>
+
+    <!-- ===== Reviews ===== -->
+    <section class="sec">
+      <div class="sec__title">みなさんの声</div>
+      <div class="reviews">
+        <div class="review">
+          <div class="review__stars">★★★★★</div>
+          <div class="review__body">「五行の説明を読んだら、彼の行動が急に腑に落ちた。今まで自分を責めてたのが、そういう縁なんだって思えて、少し楽になりました」</div>
+          <div class="review__meta">20代女性・片想い中</div>
+        </div>
+        <div class="review">
+          <div class="review__stars">★★★★★</div>
+          <div class="review__body">「480円版でもらったLINEテンプレを少し変えて送ったら返信来ました。具体的で本当に助かった」</div>
+          <div class="review__meta">20代女性・復縁中</div>
+        </div>
+        <div class="review">
+          <div class="review__stars">★★★★★</div>
+          <div class="review__body">「980円版、長いけどぜんぶ読んだ。なんでこんなに好きなのか、やっと分かった気がして選択肢が増えた」</div>
+          <div class="review__meta">30代女性・交際中</div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== FAQ ===== -->

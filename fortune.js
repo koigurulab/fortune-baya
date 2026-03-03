@@ -457,6 +457,7 @@ async function boot(){
 boot();
 
 function ask(s){
+  updateProgress(s);
   const q = questionFor(s);
   if(q) pushBot(q);
   renderChoicesFor(s);
@@ -816,6 +817,9 @@ async function advance(){
     const outNorm = normalizeOut(out);
     saveLastFree({ intake, outNorm });
 
+    // 五行相性バッジ（視覚サマリー）を結果テキストの前に表示
+    pushCompatBadge(intake);
+
     if(outNorm.format==="html") pushBotHtml(outNorm.content);
     else pushBot(outNorm.content);
 
@@ -823,6 +827,7 @@ async function advance(){
 
     // After free: show 480/980 only
     state = STATES.DONE;
+    updateProgress(STATES.DONE);
     showAfterFree(UI);
     bindPaidEntryActions(() => intake);
 
@@ -1084,4 +1089,114 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
+}
+
+/** ====== 進捗バー ====== */
+const STEP_PROGRESS = {
+  ASK_USER_BDAY: 5,
+  ASK_USER_GENDER: 14,
+  ASK_USER_BTIME: 23,
+  ASK_USER_PREF: 32,
+  ASK_USER_MBTI: 40,
+  ASK_PARTNER_BDAY: 48,
+  ASK_PARTNER_GENDER: 54,
+  ASK_PARTNER_PREF: 60,
+  ASK_PARTNER_AGE_RANGE: 64,
+  ASK_PARTNER_BTIME: 68,
+  ASK_PARTNER_MBTI: 74,
+  ASK_RELATION: 80,
+  ASK_RECENT_EVENT: 86,
+  ASK_CONCERN_LONG: 92,
+  DONE: 100,
+};
+
+function updateProgress(s){
+  const pct = STEP_PROGRESS[s] ?? 0;
+  const bar = document.getElementById("progressBar");
+  if(bar) bar.style.width = `${pct}%`;
+}
+
+/** ====== 五行クライアント算出（deriveElements.js と同ロジック）====== */
+const _STEMS_C   = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const _STEM_ELEM = {"甲":"木","乙":"木","丙":"火","丁":"火","戊":"土","己":"土","庚":"金","辛":"金","壬":"水","癸":"水"};
+const _MONTH_BR  = {1:"丑",2:"寅",3:"卯",4:"辰",5:"巳",6:"午",7:"未",8:"申",9:"酉",10:"戌",11:"亥",12:"子"};
+const _BR_ELEM   = {"子":"水","丑":"土","寅":"木","卯":"木","辰":"土","巳":"火","午":"火","未":"土","申":"金","酉":"金","戌":"土","亥":"水"};
+
+function clientDeriveElements(birthday){
+  if(!birthday) return { primary:"不明", secondary:"不明" };
+  const m = String(birthday).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(!m) return { primary:"不明", secondary:"不明" };
+  const year = Number(m[1]), month = Number(m[2]);
+  const stemIdx = ((year - 4) % 10 + 10) % 10;
+  const stem = _STEMS_C[stemIdx];
+  const mb = _MONTH_BR[month] || null;
+  return {
+    primary:   _STEM_ELEM[stem]                 || "不明",
+    secondary: (mb && _BR_ELEM[mb])             || "不明",
+  };
+}
+
+/** ====== 相性スコア（相生80〜82 / 同気65 / 相克45〜48）====== */
+// 行=ユーザー主気、列=相手主気。相生（生む）高、相克低
+const COMPAT_SCORE = {
+  "木木":65,"木火":82,"木土":45,"木金":48,"木水":78,
+  "火木":78,"火火":65,"火土":82,"火金":45,"火水":48,
+  "土木":48,"土火":78,"土土":65,"土金":82,"土水":45,
+  "金木":45,"金火":48,"金土":78,"金金":65,"金水":82,
+  "水木":82,"水火":45,"水土":48,"水金":78,"水水":65,
+};
+
+const ELEM_ICON = { 木:"🌿", 火:"🔥", 土:"🌏", 金:"⚡", 水:"💧" };
+
+const COMPAT_PH_HIGH = [
+  "引き合う力が強い縁。",
+  "互いを高め合える縁。",
+  "深まるほどに安定する縁。",
+];
+const COMPAT_PH_MID = [
+  "波があるが、補い合える縁。",
+  "距離感を整えると深まる縁。",
+  "違いが学びになる縁。",
+];
+const COMPAT_PH_LOW = [
+  "摩擦があるぶん、理解が増える縁。",
+  "越えると強くなる縁。",
+];
+
+function compatPhrase(score){
+  const list = score >= 78 ? COMPAT_PH_HIGH : score >= 58 ? COMPAT_PH_MID : COMPAT_PH_LOW;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+/** 五行相性バッジをチャットに挿入 */
+function pushCompatBadge(it){
+  const ue = it.derived?.user_elements    || clientDeriveElements(it.user?.birthday);
+  const pe = it.derived?.partner_elements || clientDeriveElements(it.partner?.birthday);
+
+  const rawScore = COMPAT_SCORE[(ue.primary || "") + (pe.primary || "")];
+  const score = (rawScore !== undefined) ? rawScore : 65;
+  const phrase = compatPhrase(score);
+
+  function elemLabel(e){
+    if(!e || e.primary === "不明") return "?";
+    const icon1 = ELEM_ICON[e.primary]   || "";
+    const icon2 = ELEM_ICON[e.secondary] || "";
+    const sec   = (e.secondary && e.secondary !== "不明") ? `×${icon2}${e.secondary}` : "";
+    return `${icon1}${e.primary}${sec}`;
+  }
+
+  const html = `<div class="compat-badge">
+  <div class="cb-elements">
+    <span class="cb-elem">${escapeHtml(elemLabel(ue))}</span>
+    <span class="cb-arrow">←相性→</span>
+    <span class="cb-elem">${escapeHtml(elemLabel(pe))}</span>
+  </div>
+  <div class="cb-score-row">
+    <span class="cb-score-label">相性スコア</span>
+    <div class="cb-bar-wrap"><div class="cb-bar-fill" style="width:${score}%"></div></div>
+    <span class="cb-score-num">${score}点</span>
+  </div>
+  <div class="cb-phrase">「${escapeHtml(phrase)}」</div>
+</div>`;
+  pushBotHtml(html);
 }
