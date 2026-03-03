@@ -427,6 +427,16 @@ async function handleStripeReturnIfAny(){
 
     track("view_result_paid", { plan: pending.mode });
 
+    // GA4 ecommerce: 収益をGA4に記録
+    const _priceMap = { paid_480: 480, paid_980: 980, paid_1980: 1980 };
+    const _price = _priceMap[pending.mode] || 0;
+    track("purchase", {
+      transaction_id: pending.intake?.meta?.session_id || crypto.randomUUID(),
+      value: _price,
+      currency: "JPY",
+      items: [{ item_id: pending.mode, item_name: pending.mode, price: _price, quantity: 1 }],
+    });
+
     showAfterPaid(UI);
     bindPaidUtilityActions({ allowUpgradeButtons:true });
 
@@ -442,6 +452,9 @@ async function handleStripeReturnIfAny(){
 
 /** ====== boot ====== */
 async function boot(){
+  // GA4: チャットページ到達を計測（LP→チャットCVRの分母）
+  track("view_fortune_page");
+
   // Hide action blocks ASAP
   initActionBlocks();
   // Restore action state if user already has paid report within 24h
@@ -815,13 +828,21 @@ async function advance(){
     const out = await generateWithProgress("free_report", intake);
 
     const outNorm = normalizeOut(out);
-    saveLastFree({ intake, outNorm });
 
-    // 五行相性バッジ（視覚サマリー）を結果テキストの前に表示
+    // SUMMARY行を抽出してクリーンな本文に整える
+    const summary = parseSummary(outNorm.content);
+    const cleanNorm = summary
+      ? { ...outNorm, content: stripSummaryLine(outNorm.content) }
+      : outNorm;
+    saveLastFree({ intake, outNorm: cleanNorm });
+
+    // 五行相性バッジ（視覚サマリー）
     pushCompatBadge(intake);
+    // 吉・凶・一手バッジ
+    pushSummaryBadge(summary);
 
-    if(outNorm.format==="html") pushBotHtml(outNorm.content);
-    else pushBot(outNorm.content);
+    if(cleanNorm.format==="html") pushBotHtml(cleanNorm.content);
+    else pushBot(cleanNorm.content);
 
     track("view_result_free");
 
@@ -1089,6 +1110,43 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
+}
+
+/** ====== 吉凶サマリーバッジ ====== */
+function parseSummary(text){
+  if(!text) return null;
+  const m = text.match(/\[\[SUMMARY:([^\]]+)\]\]/);
+  if(!m) return null;
+  const parts = {};
+  m[1].split("|").forEach(seg => {
+    const idx = seg.indexOf("=");
+    if(idx < 0) return;
+    parts[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+  });
+  if(!parts["吉"] && !parts["凶"] && !parts["一手"]) return null;
+  return parts;
+}
+
+function stripSummaryLine(text){
+  return text.replace(/\[\[SUMMARY:[^\]]+\]\]\s*$/, "").trimEnd();
+}
+
+function pushSummaryBadge(summary){
+  if(!summary) return;
+  const items = [
+    { label:"今週の吉", val: summary["吉"]  || "", cls:"sb-good" },
+    { label:"今週の凶", val: summary["凶"]  || "", cls:"sb-bad"  },
+    { label:"今週の一手", val: summary["一手"] || "", cls:"sb-move" },
+  ].filter(i => i.val);
+  if(!items.length) return;
+
+  const rows = items.map(i =>
+    `<div class="sb-item ${escapeHtml(i.cls)}">
+      <span class="sb-lbl">${escapeHtml(i.label)}</span>
+      <span class="sb-val">${escapeHtml(i.val)}</span>
+    </div>`
+  ).join("");
+  pushBotHtml(`<div class="summary-badge">${rows}</div>`);
 }
 
 /** ====== 進捗バー ====== */
