@@ -1159,19 +1159,19 @@ const STEP_PROGRESS = {
 
 // ざっくり進捗フェーズ別テキスト
 const PROGRESS_HINT_TEXT = {
-  ASK_USER_BDAY:         "情報を入力中...",
-  ASK_USER_GENDER:       "情報を入力中...",
-  ASK_USER_BTIME:        "情報を入力中...",
-  ASK_USER_PREF:         "情報を入力中...",
-  ASK_USER_MBTI:         "あなたの気質を読んでいます...",
-  ASK_PARTNER_BDAY:      "お相手の情報を入力中...",
-  ASK_PARTNER_GENDER:    "お相手の情報を入力中...",
-  ASK_PARTNER_PREF:      "お相手の情報を入力中...",
-  ASK_PARTNER_AGE_RANGE: "お相手の情報を入力中...",
-  ASK_PARTNER_BTIME:     "お相手の情報を入力中...",
-  ASK_PARTNER_MBTI:      "お相手の気配を辿っています...",
-  ASK_RELATION:          "<strong>もうすぐです</strong> — 関係性を教えてください",
-  ASK_RECENT_EVENT:      "<strong>もうすぐです</strong> — 直近の出来事を教えてください",
+  ASK_USER_BDAY:         "無料鑑定のための情報を入力中...",
+  ASK_USER_GENDER:       "無料鑑定のための情報を入力中...",
+  ASK_USER_BTIME:        "無料鑑定のための情報を入力中...",
+  ASK_USER_PREF:         "無料鑑定のための情報を入力中...",
+  ASK_USER_MBTI:         "無料鑑定のための情報を入力中...",
+  ASK_PARTNER_BDAY:      "無料鑑定のためにお相手の情報を入力中...",
+  ASK_PARTNER_GENDER:    "無料鑑定のためにお相手の情報を入力中...",
+  ASK_PARTNER_PREF:      "無料鑑定のためにお相手の情報を入力中...",
+  ASK_PARTNER_AGE_RANGE: "無料鑑定のためにお相手の情報を入力中...",
+  ASK_PARTNER_BTIME:     "無料鑑定のためにお相手の情報を入力中...",
+  ASK_PARTNER_MBTI:      "無料鑑定のためにお相手の情報を入力中...",
+  ASK_RELATION:          "<strong>無料鑑定まで、もうすぐです</strong> — 関係性を教えてください",
+  ASK_RECENT_EVENT:      "<strong>無料鑑定まで、もうすぐです</strong> — 直近の出来事を教えてください",
   ASK_CONCERN_LONG:      "<strong>あと1つで無料鑑定がはじまります</strong>",
 };
 
