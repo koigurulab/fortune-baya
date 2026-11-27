@@ -1132,7 +1132,7 @@ function pushSummaryBadge(summary){
     { label:"今週の吉", val: summary["吉"]  || "", cls:"sb-good" },
     { label:"今週の凶", val: summary["凶"]  || "", cls:"sb-bad"  },
     // 本文では「今、何をすべきか」は有料と伝えているので、一手は伏せて見せる
-    { label:"今週の一手", val: summary["一手"] ? "🔒 有料の鑑定でお伝えしますわ" : "", cls:"sb-move" },
+    { label:"今週の一手", val: summary["一手"] ? "🔒 有料版でお伝えしますわ" : "", cls:"sb-move" },
   ].filter(i => i.val);
   if(!items.length) return;
 
