@@ -402,6 +402,10 @@ async function handleStripeReturnIfAny(){
     pushBot("決済は確認できましたが、生成内容が特定できませんでした。480円／980円ボタンからもう一度お進みくださいませ。");
     return;
   }
+  // サーバ側でStripeを直接確認できるよう、決済IDを持たせて保存し直す
+  pending.intake = pending.intake || {};
+  pending.intake.meta = { ...(pending.intake.meta || {}), stripe_session_id: sessionId };
+  savePaidPending({ mode: pending.mode, intake: pending.intake });
 
   try{
     pushBot("承りました。鑑定を仕上げております…");
@@ -619,7 +623,34 @@ async function handleAnswer(v){
     pushBot("恐れ入ります。形式が少し違うようです。もう一度、例に沿って教えてくださいませ。");
     return;
   }
-  await advance();
+  await runAdvance();
+}
+
+// 鑑定の生成に失敗しても行き止まりにしない（メッセージ＋もう一度ボタン）
+async function runAdvance(){
+  try{
+    await advance();
+  }catch(e){
+    console.error(e);
+    track("error_generate", { mode: String(state), error_type: "flow_generate_failed" });
+    pushBot("申し訳ございません。鑑定がうまく届きませんでした。少し間をおいて、下のボタンからもう一度お試しくださいませ。");
+    showRetryChoice();
+  }
+}
+
+function showRetryChoice(){
+  if(!choicesBodyEl) return;
+  choicesBodyEl.innerHTML = "";
+  const row = document.createElement("div");
+  row.className = "choice-row";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "chip primary";
+  btn.textContent = "もう一度占ってもらう";
+  btn.onclick = async () => { hideChoices(); await runAdvance(); };
+  row.appendChild(btn);
+  choicesBodyEl.appendChild(row);
+  showChoices();
 }
 
 function applyAnswer(s, v){

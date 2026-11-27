@@ -1,6 +1,7 @@
 // /api/fortune-generate.js
 import { generateFortune } from "../lib/fortune/index.js";
-import { kvGet, kvSet, kvIncr, kvExpire } from "../lib/kv.js";
+import { kvGet, kvSet, kvIncr, kvExpire, kvTry } from "../lib/kv.js";
+import { verifyStripeEntitlement } from "../lib/paid.js";
 import { clientIds, jstDay, sha256 } from "../lib/identify.js";
 
 export default async function handler(req, res) {
@@ -40,14 +41,14 @@ export default async function handler(req, res) {
         persona: intake?.persona,
       }));
       const cacheKey = `free:cache:${cacheSig}`;
-      const cached = await kvGet(cacheKey);
+      const cached = await kvTry(() => kvGet(cacheKey));
       if (cached) {
         return res.status(200).json({ html: cached, format: "html", cached: true });
       }
 
       // 1日2回（ユーザー識別は sessionHash を主）
       const countKey = `free:count:${day}:${ids.sessionHash}`;
-      const countRaw = await kvGet(countKey);
+      const countRaw = await kvTry(() => kvGet(countKey));
       const count = countRaw ? Number(countRaw) : 0;
 
       if (count >= 2) {
@@ -66,28 +67,35 @@ export default async function handler(req, res) {
       }
 
       // カウント + キャッシュ
-      const newCount = await kvIncr(countKey);
-      if (newCount === 1) await kvExpire(countKey, 60 * 60 * 26);
-      await kvSet(cacheKey, finalHtml, { ex: 60 * 60 * 24 });
+      await kvTry(async () => {
+        const newCount = await kvIncr(countKey);
+        if (newCount === 1) await kvExpire(countKey, 60 * 60 * 26);
+        await kvSet(cacheKey, finalHtml, { ex: 60 * 60 * 24 });
+      });
 
       return res.status(200).json({ html: finalHtml, cached: false });
     }
 
     // ---- 2) paid は「支払い権利」チェックを挟む（重要） ----
     if (mode === "paid_480" || mode === "paid_980" || mode === "paid_1980") {
-      const entRaw = await kvGet(`paid:ent:${ids.sessionHash}`);
-      if (!entRaw) {
+      let ent = null;
+      const entRaw = await kvTry(() => kvGet(`paid:ent:${ids.sessionHash}`));
+      if (entRaw) {
+        try { ent = JSON.parse(entRaw); } catch { ent = null; }
+      }
+      // KVに無い（またはKV障害）ときは Stripe を直接確認する
+      if (!ent) {
+        ent = await verifyStripeEntitlement(intake?.meta?.stripe_session_id, ids.sessionHash);
+      }
+      if (!ent) {
         return res.status(402).json({
           error: "PAYMENT_REQUIRED",
           message: "お支払いが確認できませんでした。決済後にもう一度お試しくださいませ。",
         });
       }
 
-      let ent;
-      try { ent = JSON.parse(entRaw); } catch { ent = null; }
-
       const planNeed = (mode === "paid_480") ? "480" : (mode === "paid_980") ? "980" : "1980";
-      if (!ent || String(ent.plan) !== planNeed) {
+      if (String(ent.plan) !== planNeed) {
         return res.status(403).json({
           error: "PLAN_MISMATCH",
           message: "購入プランと生成内容が一致しませんでした。",
@@ -115,8 +123,15 @@ export default async function handler(req, res) {
 }
 
 async function rateLimitOrThrow(key, windowSec, limit) {
-  const n = await kvIncr(key);
-  if (n === 1) await kvExpire(key, windowSec);
+  let n;
+  try {
+    n = await kvIncr(key);
+    if (n === 1) await kvExpire(key, windowSec);
+  } catch (e) {
+    // KV障害時はレート制限を飛ばして鑑定を続ける（サービス停止を避ける）
+    console.warn("[kv] rate limit skipped:", e?.message || e);
+    return;
+  }
   if (n > limit) {
     const e = new Error("RATE_LIMITED");
     e.status = 429;
