@@ -20,7 +20,7 @@
     .row{ display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 0; }
     button{ padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#7c6ee6; color:#fff; font-weight:800; cursor:pointer; }
     button.secondary{ background:rgba(255,255,255,.08); }
-    #content{ line-height:1.9; }
+    #content{ line-height:1.9; white-space:pre-wrap; }
     .muted{ color:rgba(231,229,228,.65); font-size:12px; margin-top:10px; }
     @media print { .row, .muted { display:none !important; } body{ background:#fff; color:#000; } .card{ border:none; } }
   </style>
@@ -58,7 +58,8 @@
       const data = await res.json();
       window.__shared = data;
       if(data.format === "html"){
-        document.getElementById("content").innerHTML = data.content;
+        // 保存内容をそのままHTMLとして差し込むとスクリプトが動くので、文字として表示する
+        document.getElementById("content").textContent = htmlToText(data.content);
       }else{
         document.getElementById("content").textContent = data.content;
       }
