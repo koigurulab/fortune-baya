@@ -472,6 +472,8 @@ boot();
 
 function ask(s){
   updateProgress(s);
+  // どの質問で離脱しているかを見るため、質問を出すたびに送る
+  track("intake_step", { step: String(s) });
   const q = questionFor(s);
   if(q) pushBot(q);
   renderChoicesFor(s);
@@ -485,14 +487,14 @@ function questionFor(s){
     case STATES.ASK_USER_PREF: return "お生まれの都道府県をお伺いしてもよろしいですか。";
     case STATES.ASK_USER_MBTI: return "MBTIは何型でしょう？分からなければ“不明”で結構です。";
 
-    case STATES.ASK_PARTNER_BDAY: return "次にお相手様です。生年月日（西暦）は分かりますか？分からなければ“不明”とご入力くださいませ。";
+    case STATES.ASK_PARTNER_BDAY: return "次にお相手様です。生年月日は分かりますか？分からなければ「分からない」を押してくださいませ。";
     case STATES.ASK_PARTNER_GENDER: return "差し支えなければ、お相手様の性別も伺ってよろしいですか。";
     case STATES.ASK_PARTNER_PREF: return "お相手様の出身地（都道府県）を伺ってもよろしいですか。分からなければ“不明”で結構です。";
-    case STATES.ASK_PARTNER_AGE_RANGE: return "では差し支えなければ、お相手様の年代だけ。（例：20代前半／20代後半／30代前半）";
+    case STATES.ASK_PARTNER_AGE_RANGE: return "では、お相手様の年代だけお教えくださいませ。";
     case STATES.ASK_PARTNER_BTIME: return "お相手様の出生時刻が分かればお教えくださいませ。不明で結構です。";
     case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ“不明”で結構です。";
 
-    case STATES.ASK_RELATION: return "いまの関係性を、ひとことでお教えください。（片想い中／交際中／曖昧な関係／復縁したなど、自由で結構です）";
+    case STATES.ASK_RELATION: return "いまのお二人の関係を選んでくださいませ。当てはまらなければ、下に自由にお書きください。";
     case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。（例：3日前に既読のまま／先週会った など）";
     case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを伺います。何に悩んでおられて、どうなりたいですか？長くて構いません。迷ったら、①直近の事実②不安③理想 の順にお書きくださいませ。";
     default: return null;
@@ -554,6 +556,30 @@ function renderChoicesFor(s){
     box.appendChild(input);
     box.appendChild(ok);
     choicesBodyEl?.appendChild(box);
+    // 片想いだと相手の生年月日を知らない人が多いので、ワンタップで進めるように
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    row.appendChild(chip("分からない","不明"));
+    choicesBodyEl?.appendChild(row);
+    return;
+  }
+
+  if(s===STATES.ASK_PARTNER_AGE_RANGE){
+    showChoices();
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    ["10代","20代前半","20代後半","30代前半","30代後半","40代以上"].forEach(a => row.appendChild(chip(a,a,"primary")));
+    row.appendChild(chip("分からない","分からない"));
+    choicesBodyEl?.appendChild(row);
+    return;
+  }
+
+  if(s===STATES.ASK_RELATION){
+    showChoices();
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    ["片想い中","交際中","曖昧な関係","復縁したい","別れそう"].forEach(r => row.appendChild(chip(r,r,"primary")));
+    choicesBodyEl?.appendChild(row);
     return;
   }
 
@@ -801,7 +827,8 @@ async function advance(){
   // user flow
   if(state===STATES.ASK_USER_BDAY){ state=STATES.ASK_USER_GENDER; ask(state); return; }
   if(state===STATES.ASK_USER_GENDER){ state=STATES.ASK_USER_BTIME; ask(state); return; }
-  if(state===STATES.ASK_USER_BTIME){ state=STATES.ASK_USER_PREF; ask(state); return; }
+  // 都道府県は鑑定にほぼ使わず、手入力で離脱を生むので聞かない
+  if(state===STATES.ASK_USER_BTIME){ state=STATES.ASK_USER_MBTI; ask(state); return; }
   if(state===STATES.ASK_USER_PREF){ state=STATES.ASK_USER_MBTI; ask(state); return; }
 
   if(state===STATES.ASK_USER_MBTI){
@@ -816,14 +843,18 @@ async function advance(){
 
   // partner flow
   if(state===STATES.ASK_PARTNER_BDAY){ state=STATES.ASK_PARTNER_GENDER; ask(state); return; }
-  if(state===STATES.ASK_PARTNER_GENDER){ state=STATES.ASK_PARTNER_PREF; ask(state); return; }
+  if(state===STATES.ASK_PARTNER_GENDER){
+    state = intake.partner.birthday ? STATES.ASK_PARTNER_BTIME : STATES.ASK_PARTNER_AGE_RANGE;
+    ask(state); return;
+  }
 
   if(state===STATES.ASK_PARTNER_PREF){
     state = intake.partner.birthday ? STATES.ASK_PARTNER_BTIME : STATES.ASK_PARTNER_AGE_RANGE;
     ask(state); return;
   }
 
-  if(state===STATES.ASK_PARTNER_AGE_RANGE){ state=STATES.ASK_PARTNER_BTIME; ask(state); return; }
+  // 生年月日が分からない相手に出生時刻は聞かない
+  if(state===STATES.ASK_PARTNER_AGE_RANGE){ state=STATES.ASK_PARTNER_MBTI; ask(state); return; }
   if(state===STATES.ASK_PARTNER_BTIME){ state=STATES.ASK_PARTNER_MBTI; ask(state); return; }
   if(state===STATES.ASK_PARTNER_MBTI){ state=STATES.ASK_RELATION; ask(state); return; }
   if(state===STATES.ASK_RELATION){ state=STATES.ASK_RECENT_EVENT; ask(state); return; }
@@ -884,6 +915,7 @@ async function advance(){
     state = STATES.DONE;
     updateProgress(STATES.DONE);
     showAfterFree(UI);
+    track("view_paywall");
     bindPaidEntryActions(() => intake);
 
     pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
