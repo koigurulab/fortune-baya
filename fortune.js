@@ -644,6 +644,20 @@ function renderChoicesFor(s){
   hideChoices();
 }
 
+/** ====== 友だちに教える（LINE） ====== */
+// 鑑定の中身は送らず、サイトの入口だけを送る。どこから来たかはUTMで測る。
+function pushShareInvite(){
+  const url = "https://fortune-baya.vercel.app/?utm_source=line&utm_medium=share&utm_campaign=free_result";
+  const text = `占いばあやで、あの人の気持ちを無料で占ってもらった。よかったらやってみて\n${url}`;
+  const href = "https://line.me/R/msg/text/?" + encodeURIComponent(text);
+  const id = pushBot(
+    `気になるお友だちがいたら、ばあやのことを教えてあげてくださいな。<br><a class="share-line" href="${href}" target="_blank" rel="noopener">LINEで友だちに教える</a>`,
+    { html: true }
+  );
+  const a = document.querySelector(`[data-msg-id="${id}"] .share-line`);
+  if(a) a.addEventListener("click", () => track("click_share", { channel: "line", place: "free_result" }));
+}
+
 /** ====== 中間鑑定の「当たってる？」 ====== */
 // 当たった感は購入の先行指標なのでGA4で測る。答えるとすぐ次の質問へ進む。
 let feedbackResolver = null;
@@ -973,6 +987,7 @@ async function advance(){
     bindPaidEntryActions(() => intake);
 
     pushBot("ここから先は、下の有料の鑑定でお渡ししますわ。気になるものから選んでくださいね。");
+    pushShareInvite();
     return;
   }
 }
