@@ -327,7 +327,15 @@ function newIntake(){
   };
 }
 
-let intake = loadIntake();
+// 質問は毎回最初から始まるので、入力も毎回まっさらにする。
+// 前回分を読み込むと悩み文が【追記】で積み上がり、別の相談が鑑定に混ざっていた。
+// セッションIDだけは引き継ぐ（無料回数の判定と決済の照合に使うため）。
+let intake = (() => {
+  const prevSessionId = loadIntake()?.meta?.session_id;
+  const fresh = newIntake();
+  if(prevSessionId) fresh.meta.session_id = prevSessionId;
+  return fresh;
+})();
 let state = STATES.ASK_USER_BDAY;
 
 // Concern follow-up
