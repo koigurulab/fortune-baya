@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       if (count >= limit) {
         return res.status(429).json({
           error: "Daily limit reached",
-          message: "無料鑑定は1日2回までです。明日またお越しくださいませ。",
+          message: "無料の鑑定は、今日はここまでですわ。また明日いらしてくださいね。ばあやは待っていますわよ。",
         });
       }
 
@@ -131,7 +131,7 @@ export default async function handler(req, res) {
     console.error(err);
     // RATE_LIMITED を 429 に
     if (err?.status === 429) {
-      return res.status(429).json({ error: "RATE_LIMITED" });
+      return res.status(429).json({ error: "RATE_LIMITED", message: "少し急ぎすぎですわ。1分ほど置いてから、もう一度試してくださいね。" });
     }
     return res.status(500).json({ error: "FUNCTION_INVOCATION_FAILED" });
   }
