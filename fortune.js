@@ -432,7 +432,7 @@ async function handleStripeReturnIfAny(){
     const _priceMap = { paid_480: 480, paid_980: 980, paid_1980: 1980 };
     const _price = _priceMap[pending.mode] || 0;
     track("purchase", {
-      transaction_id: pending.intake?.meta?.session_id || crypto.randomUUID(),
+      transaction_id: sessionId || crypto.randomUUID(),
       value: _price,
       currency: "JPY",
       items: [{ item_id: pending.mode, item_name: pending.mode, price: _price, quantity: 1 }],
@@ -644,8 +644,50 @@ function renderChoicesFor(s){
   hideChoices();
 }
 
+/** ====== 中間鑑定の「当たってる？」 ====== */
+// 当たった感は購入の先行指標なのでGA4で測る。答えるとすぐ次の質問へ進む。
+let feedbackResolver = null;
+
+function askReadingFeedback(mode){
+  return new Promise(resolve => {
+    const finish = (label, value) => {
+      if(!feedbackResolver) return;
+      feedbackResolver = null;
+      hideChoices();
+      track("reading_feedback", { mode, value });
+      pushBot(value === "miss"
+        ? "あら、そうなのね。この先の鑑定で、もう少し深く見ていきますわ。"
+        : "やっぱりね。ばあやの目に狂いはありませんわ。");
+      resolve(value);
+    };
+    feedbackResolver = (text) => finish(text, "text");
+    if(!choicesBodyEl){ finish("", "skip"); return; }
+    pushBot("どうかしら、当たっているかしら？");
+    choicesBodyEl.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "choice-row";
+    [["当たってる！", "hit", "chip primary"], ["ちょっと違うかも", "miss", "chip"]].forEach(([label, value, cls]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = label;
+      b.onclick = () => { pushUser(label); finish(label, value); };
+      row.appendChild(b);
+    });
+    choicesBodyEl.appendChild(row);
+    showChoices();
+  });
+}
+
 /** ====== main answer handler ====== */
 async function handleAnswer(v){
+  // 「当たってる？」の最中に文字で答えた場合は、その答えとして受け取る（前の質問に戻らない）
+  if(feedbackResolver){
+    pushUser(v);
+    if(inputEl){ inputEl.value = ""; inputEl.style.height = "auto"; }
+    feedbackResolver(v);
+    return;
+  }
   pushUser(v);
   if(inputEl){
     inputEl.value = "";
@@ -838,6 +880,7 @@ async function advance(){
     intake.derived.user_mini_reading = out.text;
     saveIntake(intake);
     pushBot(out.text);
+    await askReadingFeedback("mini_user");
     state=STATES.ASK_PARTNER_BDAY; ask(state); return;
   }
 
@@ -866,6 +909,7 @@ async function advance(){
     intake.derived.partner_mini_reading = out.text;
     saveIntake(intake);
     pushBot(out.text);
+    await askReadingFeedback("mini_partner");
     state=STATES.ASK_CONCERN_LONG; ask(state); return;
   }
 
