@@ -105,7 +105,7 @@ export default async function handler(req, res) {
       if (!ent) {
         return res.status(402).json({
           error: "PAYMENT_REQUIRED",
-          message: "お支払いが確認できませんでした。決済後にもう一度お試しくださいませ。",
+          message: "お支払いが確認できませんでしたわ。お支払いが済んでいるのに出る時は、このページを開き直してくださいね。",
         });
       }
 
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
       if (String(ent.plan) !== planNeed) {
         return res.status(403).json({
           error: "PLAN_MISMATCH",
-          message: "購入プランと生成内容が一致しませんでした。",
+          message: "お支払いのプランと、作ろうとした鑑定が合いませんでしたわ。お手数ですが koigurulab@gmail.com へご連絡くださいね。",
         });
       }
     }
