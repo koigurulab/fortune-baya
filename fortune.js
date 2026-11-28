@@ -865,6 +865,11 @@ async function advance(){
 
     // SUMMARY行を抽出してクリーンな本文に整える
     const summary = parseSummary(outNorm.content);
+    // 有料版が無料の吉・凶・一手と食い違わないよう、鑑定の材料として残す
+    if(summary){
+      intake.derived.free_summary = summary;
+      saveIntake(intake);
+    }
     const cleanNorm = summary
       ? { ...outNorm, content: stripSummaryLine(outNorm.content) }
       : outNorm;
@@ -886,7 +891,7 @@ async function advance(){
     showAfterFree(UI);
     bindPaidEntryActions(() => intake);
 
-    pushBot("この先は、詳しい鑑定（有料）もお作りできます。まずはここまで、いかがでしたか。");
+    pushBot("ここから先は、下の有料の鑑定でお渡しいたします。気になるものからお選びくださいませ。");
     return;
   }
 }
