@@ -1,6 +1,6 @@
 // /api/stripe-verify.js
 import Stripe from "stripe";
-import { kvGet, kvSet } from "../lib/kv.js";
+import { kvGet, kvSet, kvTry } from "../lib/kv.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     if (!sessionId) return res.status(400).json({ error: "session_id is required" });
 
     // すでにKVにあるなら即返す
-    const cached = await kvGet(`paid:sess:${sessionId}`);
+    const cached = await kvTry(() => kvGet(`paid:sess:${sessionId}`));
     if (cached) {
       const p = JSON.parse(cached);
       return res.status(200).json({ ok: true, plan: p.plan, cached: true });
@@ -46,8 +46,11 @@ export default async function handler(req, res) {
     };
 
     // entitlement付与（Webhookと同じことをここでもやる＝遅延吸収）
-    await kvSet(`paid:ent:${sessionHash}`, JSON.stringify(payload), { ex: 60 * 60 * 24 });
-    await kvSet(`paid:sess:${s.id}`, JSON.stringify(payload), { ex: 60 * 60 * 26 });
+    // KV障害時も決済確認自体は成功として返す（生成時に Stripe を直接確認する）
+    await kvTry(async () => {
+      await kvSet(`paid:ent:${sessionHash}`, JSON.stringify(payload), { ex: 60 * 60 * 24 });
+      await kvSet(`paid:sess:${s.id}`, JSON.stringify(payload), { ex: 60 * 60 * 26 });
+    });
 
     return res.status(200).json({ ok: true, plan: String(plan), cached: false });
   } catch (err) {
