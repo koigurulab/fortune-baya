@@ -648,7 +648,7 @@ function renderChoicesFor(s){
 // 鑑定の中身は送らず、サイトの入口だけを送る。どこから来たかはUTMで測る。
 function pushShareInvite(){
   const url = "https://fortune-baya.vercel.app/?utm_source=line&utm_medium=share&utm_campaign=free_result";
-  const text = `占いばあやに、あの人の気持ちを無料で占ってもらったわ。\n${url}`;
+  const text = `占いばあやで、あの人の気持ちを無料で占ってもらった。よかったらやってみて\n${url}`;
   const href = "https://line.me/R/msg/text/?" + encodeURIComponent(text);
   const id = pushBot(
     `気になるお友だちがいたら、ばあやのことを教えてあげてくださいな。<br><a class="share-line" href="${href}" target="_blank" rel="noopener">LINEで友だちに教える</a>`,
