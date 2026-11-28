@@ -485,14 +485,14 @@ function questionFor(s){
     case STATES.ASK_USER_GENDER: return "差し支えなければ、あなた様の性別をお伺いしてもよろしいですか。";
     case STATES.ASK_USER_BTIME: return "出生時刻が分かればお教えくださいませ。不明であれば大体の時間帯でも大丈夫でございます。（例：昼頃ならば12:00）";
     case STATES.ASK_USER_PREF: return "お生まれの都道府県をお伺いしてもよろしいですか。";
-    case STATES.ASK_USER_MBTI: return "MBTIは何型でしょう？分からなければ“不明”で結構です。";
+    case STATES.ASK_USER_MBTI: return "MBTIは何型でしょう？分からなければ「不明」で結構です。";
 
     case STATES.ASK_PARTNER_BDAY: return "次にお相手様です。生年月日は分かりますか？分からなければ「分からない」を押してくださいませ。";
     case STATES.ASK_PARTNER_GENDER: return "差し支えなければ、お相手様の性別も伺ってよろしいですか。";
-    case STATES.ASK_PARTNER_PREF: return "お相手様の出身地（都道府県）を伺ってもよろしいですか。分からなければ“不明”で結構です。";
+    case STATES.ASK_PARTNER_PREF: return "お相手様の出身地（都道府県）を伺ってもよろしいですか。分からなければ「不明」で結構です。";
     case STATES.ASK_PARTNER_AGE_RANGE: return "では、お相手様の年代だけお教えくださいませ。";
     case STATES.ASK_PARTNER_BTIME: return "お相手様の出生時刻が分かればお教えくださいませ。不明で結構です。";
-    case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ“不明”で結構です。";
+    case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ「不明」で結構です。";
 
     case STATES.ASK_RELATION: return "いまのお二人の関係を選んでくださいませ。当てはまらなければ、下に自由にお書きください。";
     case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。（例：3日前に既読のまま／先週会った など）";
