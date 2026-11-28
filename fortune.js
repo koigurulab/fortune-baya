@@ -394,20 +394,20 @@ async function handleStripeReturnIfAny(){
   if(!sessionId) return;
 
   // session_id がある = Stripe成功戻り
-  pushBot("お支払いを確認しております…");
+  pushBot("お支払いを確かめていますわ…");
 
   // 権利付与（サーバ側でKVに paid:ent を入れる）
   const vr = await fetch(`/api/stripe-verify?session_id=${encodeURIComponent(sessionId)}`);
   const vj = await vr.json().catch(()=> ({}));
   if(!vr.ok || !vj.ok){
-    pushBot("申し訳ございません。決済確認に失敗しました。少し時間をおいて再度お試しくださいませ。");
+    pushBot("ごめんなさいね。お支払いの確認がうまくいきませんでしたわ。少し時間をおいて、このページを開き直してくださいな。");
     return;
   }
 
   // 戻り後に自動生成するため、pending を使う（クリック前に保存してある想定）
   const pending = loadPaidPending();
   if(!pending){
-    pushBot("決済は確認できましたが、生成内容が特定できませんでした。480円／980円ボタンからもう一度お進みくださいませ。");
+    pushBot("お支払いは確認できましたけれど、どの鑑定を作るかが分からなくなってしまいましたわ。お手数ですが koigurulab@gmail.com へご連絡くださいね。すぐにお作りしますわ。");
     return;
   }
   // サーバ側でStripeを直接確認できるよう、決済IDを持たせて保存し直す
@@ -416,7 +416,7 @@ async function handleStripeReturnIfAny(){
   savePaidPending({ mode: pending.mode, intake: pending.intake });
 
   try{
-    pushBot("承りました。鑑定を仕上げております…");
+    pushBot("ありがとう。鑑定を仕上げていますわ…");
     const out = await generateWithProgress(pending.mode, pending.intake);
 
     const outNorm = normalizeOut(out);
@@ -445,7 +445,7 @@ async function handleStripeReturnIfAny(){
     history.replaceState({}, "", location.pathname);
 
   }catch(e){
-    pushBot("申し訳ございません。有料レポートの生成に失敗しました。");
+    pushBot("ごめんなさいね。有料の鑑定を作るのに失敗してしまいましたわ。このページを読み込み直すと、もう一度作り直しますわ。それでもだめなら koigurulab@gmail.com へご連絡くださいね。");
     track("error_generate", { mode: pending?.mode || "paid", error_type: "paid_generate_failed" });
     console.error(e);
   }
@@ -461,7 +461,7 @@ async function boot(){
   // Restore action state if user already has paid report within 24h
   syncActionUIFromStorage(UI);
 
-  pushBot("こんばんは。占いばあやでございます。ひとつずつ伺いますね。");
+  pushBot("こんばんは。占いばあやですわ。ひとつずつ聞いていきますわね。");
 
   // ★Stripeから戻ってきた場合は、ここで verify → 自動生成
   await handleStripeReturnIfAny();
@@ -481,22 +481,22 @@ function ask(s){
 
 function questionFor(s){
   switch(s){
-    case STATES.ASK_USER_BDAY: return "まず、あなた様の生年月日を西暦でお教えくださいませ。";
-    case STATES.ASK_USER_GENDER: return "差し支えなければ、あなた様の性別をお伺いしてもよろしいですか。";
-    case STATES.ASK_USER_BTIME: return "出生時刻が分かればお教えくださいませ。不明であれば大体の時間帯でも大丈夫でございます。（例：昼頃ならば12:00）";
-    case STATES.ASK_USER_PREF: return "お生まれの都道府県をお伺いしてもよろしいですか。";
-    case STATES.ASK_USER_MBTI: return "MBTIは何型でしょう？分からなければ「不明」で結構です。";
+    case STATES.ASK_USER_BDAY: return "まず、貴方の生年月日を教えてくださいね。";
+    case STATES.ASK_USER_GENDER: return "差し支えなければ、貴方の性別を教えてくださいね。";
+    case STATES.ASK_USER_BTIME: return "生まれた時刻が分かれば教えてくださいね。分からなければ、だいたいの時間帯でも大丈夫ですわ。（例：お昼ごろなら12:00）";
+    case STATES.ASK_USER_PREF: return "生まれた都道府県を教えてくださいね。";
+    case STATES.ASK_USER_MBTI: return "MBTIは何型かしら？分からなければ「不明」で大丈夫ですわ。";
 
-    case STATES.ASK_PARTNER_BDAY: return "次にお相手様です。生年月日は分かりますか？分からなければ「分からない」を押してくださいませ。";
-    case STATES.ASK_PARTNER_GENDER: return "差し支えなければ、お相手様の性別も伺ってよろしいですか。";
-    case STATES.ASK_PARTNER_PREF: return "お相手様の出身地（都道府県）を伺ってもよろしいですか。分からなければ「不明」で結構です。";
-    case STATES.ASK_PARTNER_AGE_RANGE: return "では、お相手様の年代だけお教えくださいませ。";
-    case STATES.ASK_PARTNER_BTIME: return "お相手様の出生時刻が分かればお教えくださいませ。不明で結構です。";
-    case STATES.ASK_PARTNER_MBTI: return "お相手様のMBTIは分かりますか？分からなければ「不明」で結構です。";
+    case STATES.ASK_PARTNER_BDAY: return "次はお相手のことですわ。生年月日は分かるかしら？分からなければ「分からない」を押してくださいね。";
+    case STATES.ASK_PARTNER_GENDER: return "差し支えなければ、お相手の性別も教えてくださいね。";
+    case STATES.ASK_PARTNER_PREF: return "お相手の出身地（都道府県）は分かるかしら？分からなければ「不明」で大丈夫ですわ。";
+    case STATES.ASK_PARTNER_AGE_RANGE: return "では、お相手の年代だけ教えてくださいね。";
+    case STATES.ASK_PARTNER_BTIME: return "お相手の生まれた時刻が分かれば教えてくださいね。分からなければ「不明」で大丈夫ですわ。";
+    case STATES.ASK_PARTNER_MBTI: return "お相手のMBTIは分かるかしら？分からなければ「不明」で大丈夫ですわ。";
 
-    case STATES.ASK_RELATION: return "いまのお二人の関係を選んでくださいませ。当てはまらなければ、下に自由にお書きください。";
-    case STATES.ASK_RECENT_EVENT: return "直近で起きた出来事を、短くお教えください。（例：3日前に既読のまま／先週会った など）";
-    case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを伺います。何に悩んでおられて、どうなりたいですか？長くて構いません。迷ったら、①直近の事実②不安③理想 の順にお書きくださいませ。";
+    case STATES.ASK_RELATION: return "今のお二人の関係を選んでくださいね。当てはまらなければ、下に自由に書いてくださいな。";
+    case STATES.ASK_RECENT_EVENT: return "最近あった出来事を、短く教えてくださいね。（例：3日前から既読のまま／先週会った など）";
+    case STATES.ASK_CONCERN_LONG: return "最後に、いちばん知りたいことを聞かせてくださいな。何に悩んでいて、どうなりたいのかしら？長くても大丈夫ですわ。迷ったら、①最近あったこと ②不安なこと ③どうなりたいか の順に書いてみてくださいね。";
     default: return null;
   }
 }
@@ -654,7 +654,7 @@ async function handleAnswer(v){
 
   const ok = applyAnswer(state, v);
   if(!ok){
-    pushBot("恐れ入ります。形式が少し違うようです。もう一度、例に沿って教えてくださいませ。");
+    pushBot("あら、形が少し違うみたいですわ。もう一度、例のとおりに教えてくださいね。");
     return;
   }
   await runAdvance();
@@ -667,7 +667,7 @@ async function runAdvance(){
   }catch(e){
     console.error(e);
     track("error_generate", { mode: String(state), error_type: "flow_generate_failed" });
-    pushBot("申し訳ございません。鑑定がうまく届きませんでした。少し間をおいて、下のボタンからもう一度お試しくださいませ。");
+    pushBot("ごめんなさいね。鑑定がうまく届かなかったみたいですわ。少し間をおいて、下のボタンからもう一度試してくださいな。");
     showRetryChoice();
   }
 }
@@ -735,59 +735,59 @@ function progressLinesFor(mode){
   switch(mode){
     case "mini_user":
       return [
-        "命式の骨組みを立てております…",
-        "五行の偏りを静かに見ております…",
-        "強みの出どころ（木火土金水）を整えています…",
-        "あなたの恋の癖が出やすい場面を照らしております…",
-        "言葉にしてお返しする準備が整ってまいりました…"
+        "命式の骨組みを立てていますわ…",
+        "五行の偏りを静かに見ていますわ…",
+        "強みの出どころ（木火土金水）を整えていますわ…",
+        "貴方の恋の癖が出やすい場面を照らしていますわ…",
+        "言葉にしてお返しする準備が整ってきましたわ…"
       ];
     case "mini_partner":
       return [
-        "お相手様の気配を辿っております…",
-        "五行の相性（生み・剋し）を見ています…",
-        "距離の取り方の癖を読み解いております…",
-        "反応が揺れる理由を整理しています…",
-        "関係の扱い方が見えてまいりました…"
+        "お相手の気配をたどっていますわ…",
+        "五行の相性（生み・剋し）を見ていますわ…",
+        "距離の取り方の癖を読み解いていますわ…",
+        "反応が揺れる理由を整理していますわ…",
+        "関係の扱い方が見えてきましたわ…"
       ];
     case "free_report":
       return [
-        "まず、相性の軸を立てております…",
-        "今の運勢の波（強い日・弱い日）を見ています…",
-        "木火土金水のバランスから、衝突点を拾っています…",
-        "いま何をすると良いか、筋を整えております…",
-        "迷いが減る形に、最終仕立てをしております…"
+        "まず、相性の軸を立てていますわ…",
+        "今の運勢の波（強い日・弱い日）を見ていますわ…",
+        "木火土金水のバランスから、衝突点を拾っていますわ…",
+        "いま何をすると良いか、筋を整えていますわ…",
+        "迷いが減る形に、最終仕立てをしていますわ…"
       ];
     case "paid_480":
       return [
-        "相性を一段深く覗いております…",
-        "五行の噛み合い方を、具体場面に当てています…",
-        "今週の「攻め時／引き時」を割り出しています…",
-        "文面・会い方・間の取り方まで整えています…",
-        "迷いが減る形に、最終仕立てをしております…"
+        "相性を一段深く覗いていますわ…",
+        "五行の噛み合い方を、具体場面に当てていますわ…",
+        "今週の「攻め時／引き時」を割り出していますわ…",
+        "文面・会い方・間の取り方まで整えていますわ…",
+        "迷いが減る形に、最終仕立てをしていますわ…"
       ];
     case "paid_980":
       return [
-        "ご縁の深いところから読み直しております…",
-        "ふたりの命式の相克ポイントを丁寧に見ています…",
-        "今後１ヶ月の流れを時系列で組み立てています…",
-        "破綻を避ける線引きと、攻め筋を同時に整えています…",
-        "決断に使えるレベルまで、鑑定を仕上げますね…"
+        "ご縁の深いところから読み直していますわ…",
+        "ふたりの命式の相克ポイントを丁寧に見ていますわ…",
+        "今後１ヶ月の流れを時系列で組み立てていますわ…",
+        "破綻を避ける線引きと、攻め筋を同時に整えていますわ…",
+        "決断に使えるレベルまで、鑑定を仕上げますわね…"
       ];
     case "paid_1980":
       return [
-        "命式を完全に解き明かしております…",
-        "あなた様と相手様の十神配置から、根本の読みを組み立てています…",
-        "3ヶ月の運勢の流れと転機を丁寧に見ています…",
-        "関係を動かす決定的なアクションと言葉を整えています…",
-        "深い読みから、真の選択肢が見えてまいります…"
+        "命式を完全に解き明かしていますわ…",
+        "貴方とお相手の十神の並びから、根っこの読みを組み立てていますわ…",
+        "3ヶ月の運勢の流れと転機を丁寧に見ていますわ…",
+        "関係を動かす決定的なアクションと言葉を整えていますわ…",
+        "深い読みから、本当の選び道が見えてきましたわ…"
       ];
     default:
       return [
-        "少々お待ちくださいませ…",
-        "読みを進めております…",
-        "最終調整中でございます…",
-        "もう少しだけお時間くださいませ…",
-        "整いました。お渡しいたします…"
+        "少し待っていてくださいね…",
+        "読みを進めていますわ…",
+        "最後の仕上げをしていますわ…",
+        "もう少しだけ時間をくださいな…",
+        "整いましたわ。お渡ししますわね…"
       ];
   }
 }
@@ -833,7 +833,7 @@ async function advance(){
 
   if(state===STATES.ASK_USER_MBTI){
     hideChoices();
-    pushBot("少々お待ちくださいませ。あなた様の気質を拝見いたしますね。");
+    pushBot("少し待っていてくださいね。貴方の気質を見ていきますわ。");
     const out = await generateWithProgress("mini_user", intake);
     intake.derived.user_mini_reading = out.text;
     saveIntake(intake);
@@ -861,7 +861,7 @@ async function advance(){
 
   if(state===STATES.ASK_RECENT_EVENT){
     hideChoices();
-    pushBot("ありがとうございます。お相手様の気配を拝見いたしますね。");
+    pushBot("ありがとう。お相手の気配を見ていきますわね。");
     const out = await generateWithProgress("mini_partner", intake);
     intake.derived.partner_mini_reading = out.text;
     saveIntake(intake);
@@ -879,17 +879,17 @@ async function advance(){
       concernNeedsMore = false;
 
       if(concernFollowupCount === 1){
-        pushBot("承りました。もう少しだけ状況が分かると精度が上がります。次の3点を短くで結構ですので追記くださいませ。");
-        pushBot("①直近の事実（いつ／何があった） ②いちばんの不安 ③理想（どうなりたい）");
+        pushBot("ありがとう。もう少しだけ様子が分かると、ばあやの鑑定がもっと当たりますわ。次の3つを、短くでいいので書き足してくださいね。");
+        pushBot("①最近あったこと（いつ／何があった） ②いちばん不安なこと ③どうなりたいか");
       }else{
-        pushBot("ありがとうございます。最後に一点だけ。相手との接点（会う頻度／連絡頻度）を短く追記くださいませ。");
+        pushBot("ありがとう。最後にひとつだけ。お相手と会う頻度や連絡の頻度を、短く書き足してくださいね。");
       }
       return;
     }
 
     // Generate free report
     track("submit_form");
-    pushBot("承りました。では、無料の鑑定をお渡しします。");
+    pushBot("わかりましたわ。では、無料の鑑定をお渡ししますわね。");
     const out = await generateWithProgress("free_report", intake);
 
     const outNorm = normalizeOut(out);
@@ -923,7 +923,7 @@ async function advance(){
     track("view_paywall");
     bindPaidEntryActions(() => intake);
 
-    pushBot("ここから先は、下の有料の鑑定でお渡しいたします。気になるものからお選びくださいませ。");
+    pushBot("ここから先は、下の有料の鑑定でお渡ししますわ。気になるものから選んでくださいね。");
     return;
   }
 }
@@ -968,14 +968,14 @@ function bindPaidEntryActions(intakeRefGetter){
     try{
       track("click_upgrade", { plan: "paid_480" });
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。480円版の決済画面へご案内いたします…");
+      pushBot("わかりましたわ。480円の鑑定の決済画面へご案内しますわね…");
 
       const it = intakeRefGetter();
       savePaidPending({ mode:"paid_480", intake: it }); // 戻ってきた後に自動生成するため
       await goCheckout("480", it);
 
     }catch(e){
-      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      pushBot("ごめんなさいね。決済画面を開けませんでしたわ。もう一度押してみてくださいな。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
@@ -987,14 +987,14 @@ function bindPaidEntryActions(intakeRefGetter){
     try{
       track("click_upgrade", { plan: "paid_980" });
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。980円版の決済画面へご案内いたします…");
+      pushBot("わかりましたわ。980円の鑑定の決済画面へご案内しますわね…");
 
       const it = intakeRefGetter();
       savePaidPending({ mode:"paid_980", intake: it });
       await goCheckout("980", it);
 
     }catch(e){
-      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      pushBot("ごめんなさいね。決済画面を開けませんでしたわ。もう一度押してみてくださいな。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
@@ -1006,14 +1006,14 @@ function bindPaidEntryActions(intakeRefGetter){
     try{
       track("click_upgrade", { plan: "paid_1980" });
       setPaidButtonsEnabled(false);
-      pushBot("承知しました。1980円版の決済画面へご案内いたします…");
+      pushBot("わかりましたわ。1,980円の鑑定の決済画面へご案内しますわね…");
 
       const it = intakeRefGetter();
       savePaidPending({ mode:"paid_1980", intake: it });
       await goCheckout("1980", it);
 
     }catch(e){
-      pushBot("申し訳ございません。決済画面の作成に失敗しました。");
+      pushBot("ごめんなさいね。決済画面を開けませんでしたわ。もう一度押してみてくださいな。");
       console.error(e);
     }finally{
       setPaidButtonsEnabled(true);
@@ -1040,11 +1040,11 @@ function bindPaidUtilityActions(opts = { allowUpgradeButtons:true }){
 
     const pending = loadPaidPending();
     if(!pending){
-      pushBot("まだ有料レポートがありません。");
+      pushBot("まだ有料の鑑定はありませんわ。");
       return;
     }
 
-    pushBot("前回の有料レポートを再生成します…");
+    pushBot("前回の有料の鑑定を、もう一度作りますわね…");
     try{
       const out = await generateWithProgress(pending.mode, pending.intake);
       const outNorm = normalizeOut(out);
@@ -1058,7 +1058,7 @@ function bindPaidUtilityActions(opts = { allowUpgradeButtons:true }){
       else showReshowOnly(UI);
 
     }catch(e){
-      pushBot("申し訳ございません。再生成に失敗しました。");
+      pushBot("ごめんなさいね。作り直しに失敗してしまいましたわ。");
       console.error(e);
     }
   });
@@ -1066,17 +1066,17 @@ function bindPaidUtilityActions(opts = { allowUpgradeButtons:true }){
   // Copy
   bindClickEl(UI.btnCopy, async ()=>{
     const last = loadLastPaid();
-    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    if(!last){ pushBot("まだ有料の鑑定はありませんわ。"); return; }
     track("copy_click", { report_type: "paid" });
     const text = last.format==="html" ? htmlToText(last.content) : last.content;
     await copyText(text);
-    pushBot("コピーしました。");
+    pushBot("コピーしましたわ。");
   });
 
   // PDF
   bindClickEl(UI.btnPdf, ()=>{
     const last = loadLastPaid();
-    if(!last){ pushBot("まだ有料レポートがありません。"); return; }
+    if(!last){ pushBot("まだ有料の鑑定はありませんわ。"); return; }
     printAsPdf({
       title: `占いばあや｜${last.mode}`,
       html: last.format==="html" ? last.content : null,
