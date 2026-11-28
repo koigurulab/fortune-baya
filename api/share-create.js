@@ -6,6 +6,9 @@ export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+    // 共有機能は画面から外したので、新規作成は受け付けない（任意のHTMLを置けてしまうため）
+    return res.status(410).json({ error: "share disabled" });
+
     let body = req.body;
     if (typeof body === "string") body = JSON.parse(body);
 

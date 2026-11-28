@@ -763,22 +763,28 @@ function typingDotsHtml(){
 }
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+// 演出の行は「生成を待っている間」だけ流す（以前は生成前に7秒×5行＝35秒待たせていた）
+const PROGRESS_STEP_MS = 2500;
+const PROGRESS_MIN_MS = 3000;
+
 async function generateWithProgress(mode, intakeObj){
   const lines = progressLinesFor(mode);
   const ids = [];
-  for(let i=0;i<lines.length;i++){
-    const id = pushBot(lines[i] + " " + typingDotsHtml(), { html: true });
-    ids.push(id);
-    await sleep(7000);
-  }
+  let done = false;
+
+  (async () => {
+    for(let i=0;i<lines.length && !done;i++){
+      ids.push(pushBot(lines[i] + " " + typingDotsHtml(), { html: true }));
+      if(i < lines.length - 1) await sleep(PROGRESS_STEP_MS);
+    }
+  })();
 
   try{
-    const out = await generate(mode, intakeObj);
-    ids.forEach(removeMsgById);
+    const [out] = await Promise.all([generate(mode, intakeObj), sleep(PROGRESS_MIN_MS)]);
     return out;
-  }catch(e){
+  }finally{
+    done = true;
     ids.forEach(removeMsgById);
-    throw e;
   }
 }
 
@@ -1156,7 +1162,8 @@ function pushSummaryBadge(summary){
   const items = [
     { label:"今週の吉", val: summary["吉"]  || "", cls:"sb-good" },
     { label:"今週の凶", val: summary["凶"]  || "", cls:"sb-bad"  },
-    { label:"今週の一手", val: summary["一手"] || "", cls:"sb-move" },
+    // 本文では「今、何をすべきか」は有料と伝えているので、一手は伏せて見せる
+    { label:"今週の一手", val: summary["一手"] ? "🔒 有料版でお伝えしますわ" : "", cls:"sb-move" },
   ].filter(i => i.val);
   if(!items.length) return;
 
