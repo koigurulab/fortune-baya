@@ -3,6 +3,10 @@ import { generateFortune } from "../lib/fortune/index.js";
 import { kvGet, kvSet, kvIncr, kvExpire, kvTry } from "../lib/kv.js";
 import { verifyStripeEntitlement } from "../lib/paid.js";
 import { clientIds, jstDay, sha256 } from "../lib/identify.js";
+import { sanitizeIntake } from "../lib/sanitize.js";
+
+const MODES = new Set(["mini_user", "mini_partner", "free_report", "paid_480", "paid_980", "paid_1980"]);
+const KV_DOWN = Symbol("kv_down");
 
 export default async function handler(req, res) {
   try {
@@ -17,10 +21,16 @@ export default async function handler(req, res) {
       catch { return res.status(400).json({ error: "Invalid JSON body" }); }
     }
 
-    const { mode, intake } = body || {};
-    if (!mode || !intake) {
+    const { mode } = body || {};
+    if (!mode || !body?.intake) {
       return res.status(400).json({ error: "mode and intake are required" });
     }
+    // 知らないモードでもOpenAIを呼んでしまっていたので弾く
+    if (!MODES.has(mode)) {
+      return res.status(400).json({ error: "unknown mode" });
+    }
+    // 長すぎる入力を切り詰める（利用料の使いすぎ防止）
+    const intake = sanitizeIntake(body.intake);
 
     // ---- 0) まずレート制限（DoS一次防御） ----
     const day = jstDay();
@@ -48,10 +58,14 @@ export default async function handler(req, res) {
 
       // 1日2回（ユーザー識別は sessionHash を主）
       const countKey = `free:count:${day}:${ids.sessionHash}`;
-      const countRaw = await kvTry(() => kvGet(countKey));
-      const count = countRaw ? Number(countRaw) : 0;
+      const countRaw = await kvTry(() => kvGet(countKey), KV_DOWN);
+      const kvDown = countRaw === KV_DOWN;
+      // KVが使えない間は、IPごとの回数をこの関数インスタンスのメモリで数える（ゆるめに4回）
+      const memDailyKey = `free:${day}:${ids.ipHash}`;
+      const count = kvDown ? memCount(memDailyKey) : (countRaw ? Number(countRaw) : 0);
+      const limit = kvDown ? 4 : 2;
 
-      if (count >= 2) {
+      if (count >= limit) {
         return res.status(429).json({
           error: "Daily limit reached",
           message: "無料鑑定は1日2回までです。明日またお越しくださいませ。",
@@ -67,6 +81,7 @@ export default async function handler(req, res) {
       }
 
       // カウント + キャッシュ
+      if (kvDown) memIncr(memDailyKey, 60 * 60 * 26);
       await kvTry(async () => {
         const newCount = await kvIncr(countKey);
         if (newCount === 1) await kvExpire(countKey, 60 * 60 * 26);
@@ -128,13 +143,39 @@ async function rateLimitOrThrow(key, windowSec, limit) {
     n = await kvIncr(key);
     if (n === 1) await kvExpire(key, windowSec);
   } catch (e) {
-    // KV障害時はレート制限を飛ばして鑑定を続ける（サービス停止を避ける）
-    console.warn("[kv] rate limit skipped:", e?.message || e);
-    return;
+    // KV障害時は、この関数インスタンスのメモリで数える（完全ではないが、無制限よりまし）
+    console.warn("[kv] rate limit fallback to memory:", e?.message || e);
+    n = memIncr(key, windowSec);
   }
   if (n > limit) {
     const e = new Error("RATE_LIMITED");
     e.status = 429;
     throw e;
   }
+}
+
+// ---- KVが使えない時のための、メモリ上の簡易カウンタ ----
+const memHits = new Map(); // key -> { n, resetAt }
+
+function memSweep(now) {
+  if (memHits.size < 5000) return;
+  for (const [k, v] of memHits) if (v.resetAt <= now) memHits.delete(k);
+}
+
+function memCount(key) {
+  const e = memHits.get(key);
+  if (!e || e.resetAt <= Date.now()) return 0;
+  return e.n;
+}
+
+function memIncr(key, windowSec) {
+  const now = Date.now();
+  memSweep(now);
+  const e = memHits.get(key);
+  if (!e || e.resetAt <= now) {
+    memHits.set(key, { n: 1, resetAt: now + windowSec * 1000 });
+    return 1;
+  }
+  e.n += 1;
+  return e.n;
 }
