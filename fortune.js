@@ -481,7 +481,7 @@ function ask(s){
 
 function questionFor(s){
   switch(s){
-    case STATES.ASK_USER_BDAY: return "まず、貴方の生年月日を教えてくださいね。";
+    case STATES.ASK_USER_BDAY: return "まず、貴方の生年月日を教えてくださいね。カレンダーから選ぶか、下に「2000/1/1」のように打ってもいいですわ。";
     case STATES.ASK_USER_GENDER: return "差し支えなければ、貴方の性別を教えてくださいね。";
     case STATES.ASK_USER_BTIME: return "生まれた時刻が分かれば教えてくださいね。分からなければ、だいたいの時間帯でも大丈夫ですわ。（例：お昼ごろなら12:00）";
     case STATES.ASK_USER_PREF: return "生まれた都道府県を教えてくださいね。";
@@ -708,7 +708,12 @@ async function runAdvance(){
     await advance();
   }catch(e){
     console.error(e);
-    track("error_generate", { mode: String(state), error_type: "flow_generate_failed" });
+    track("error_generate", { mode: String(state), error_type: e?.status === 429 ? "rate_limited" : "flow_generate_failed" });
+    if(e?.status === 429 && e?.userMessage){
+      // 1日の回数を超えた時などは、もう一度押しても通らないのでボタンは出さない
+      pushBot(e.userMessage);
+      return;
+    }
     pushBot("ごめんなさいね。鑑定がうまく届かなかったみたいですわ。少し間をおいて、下のボタンからもう一度試してくださいな。");
     showRetryChoice();
   }
@@ -994,7 +999,10 @@ async function generate(mode, intakeObj){
   if(!res.ok){
     const errText = await res.text();
     console.error("fortune-generate error:", errText);
-    throw new Error(errText);
+    const err = new Error(errText);
+    try{ err.userMessage = JSON.parse(errText)?.message || ""; }catch{}
+    err.status = res.status;
+    throw err;
   }
   return await res.json();
 }
@@ -1186,8 +1194,23 @@ function loadIntake(){
 }
 
 /** ====== validators ====== */
-function isDate(v){ return /^\d{4}[\/-]\d{2}[\/-]\d{2}$/.test(v.trim()); }
-function normDate(v){ return v.trim().replaceAll("/", "-"); }
+// 生年月日は「2000/1/5」「2000-01-05」「20000105」「2000年1月5日」などを受け付ける（手入力する人向け）
+function parseDateParts(v){
+  const t = String(v || "").trim()
+    .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[年月\.／]/g, "/").replace(/日/g, "");
+  let m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/) || t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if(!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if(y < 1930 || y > 2025 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return { y, mo, d };
+}
+function isDate(v){ return !!parseDateParts(v); }
+function normDate(v){
+  const p = parseDateParts(v);
+  if(!p) return String(v || "").trim();
+  return `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+}
 function normDateOrNull(v){
   const t = v.trim();
   if(!t || t==="不明" || t.toLowerCase()==="unknown") return null;
